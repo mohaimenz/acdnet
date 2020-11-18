@@ -178,7 +178,7 @@ if __name__ == '__main__':
 
     valid_fold = False;
     while not valid_fold:
-        fold = input("Enter the fold number on which the model was trained:\n 1. Fold-1\n 2. Fold-2\n 3. Fold-3\n 4. Fold-4\n 5. Fold-5\n :")
+        fold = input("Enter the fold number on which the model was validated:\n 1. Fold-1\n 2. Fold-2\n 3. Fold-3\n 4. Fold-4\n 5. Fold-5\n :")
         if fold in ['1','2','3','4','5']:
             opt.split = int(fold);
             valid_fold = True;
