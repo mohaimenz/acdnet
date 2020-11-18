@@ -63,6 +63,7 @@ To rebuild ACDNet-20 from scratch in TF, follow these steps:
 2. Provide the ACDNet-20 PyTorch model path for it to retrieve the configuration of ACDNet-20 and build an equivalent TF model
 3. Follow the on-screen steps for finish the process.
 4. For this, you may choose any fold you want the model to be validated as it is going to be trained as a brand new ACDNet-20 model in TF.
+*The trained model will be saved inside ```tf/trained_models``` directory*
 
 #### Converting ACDNet-20 to TF Lite
 #### Quantizing ACDNet-20 using TF Lite
