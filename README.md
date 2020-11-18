@@ -52,13 +52,14 @@ To conduct retraining or training from scratch on a pruned model, follow these s
 2. Provide model path.
 3. Provide the fold on which the model was validated.
 
-*Once you have completed upto this, you are ready to go ahead for the deployment part*
 
-## Deployment on MCU (Tensorflow Lite)
-### Prerequisist:
+### Rebuilding ACDNet20 in Tensorflow (TF)
+#### Prerequisist:
 1. Install tensorflow 2.2.0
 
-#### Rebuilding ACDNet20 in Tensorflow (TF)
+#### Training ACDNet-20
+*you may opt to use our pretrained model provided inside tf/resources/pretrained_models directory*
+
 To rebuild ACDNet-20 from scratch in TF, follow these steps:
 1. Run: ```python tf/trainer.py```
 2. Provide the ACDNet-20 PyTorch model path for it to retrieve the configuration of ACDNet-20 and build an equivalent TF model
@@ -67,7 +68,8 @@ To rebuild ACDNet-20 from scratch in TF, follow these steps:
 
 *The trained model will be saved inside ```tf/trained_models``` directory*
 
-#### Converting ACDNet-20 to TF Lite
-#### Quantizing ACDNet-20 using TF Lite
-#### Further Steps
+*Once you have completed upto this, you are ready to go ahead for the deployment part*
+
+### ACDNet-20 on MCU
+*Please follow the instructions provided in README.md file inside ```deployment``` directory*
 
