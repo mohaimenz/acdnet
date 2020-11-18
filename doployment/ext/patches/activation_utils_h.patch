@@ -1,0 +1,27 @@
+diff --git a/tensorflow/lite/micro/kernels/activation_utils.h b/tensorflow/lite/micro/kernels/activation_utils.h
+index 95ecc26..f06cc5a 100644
+--- a/tensorflow/lite/micro/kernels/activation_utils.h
++++ b/tensorflow/lite/micro/kernels/activation_utils.h
+@@ -28,6 +28,12 @@ namespace tflite {
+ namespace ops {
+ namespace micro {
+ 
++inline float signbit(float a)
++{
++  return a <= -0.0f;
++}
++
++
+ // Returns the floating point value for a fused activation:
+ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
+   switch (act) {
+@@ -42,7 +48,8 @@ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
+     case kTfLiteActTanh:
+       return std::tanh(a);
+     case kTfLiteActSignBit:
+-      return std::signbit(a);
++      // return std::signbit(a);
++      return signbit(a);
+     case kTfLiteActSigmoid:
+       return 1.0f / (1.0f + std::exp(-a));
+   }

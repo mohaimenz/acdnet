@@ -1,0 +1,4 @@
+
+ifeq ($(CONFIG_EXAMPLES_TFLITE_MICRO),y)
+CONFIGURED_APPS += tflite_micro
+endif

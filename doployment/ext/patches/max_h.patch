@@ -1,0 +1,14 @@
+diff --git a/tensorflow/lite/kernels/internal/max.h b/tensorflow/lite/kernels/internal/max.h
+index c181002..c1cb3de 100644
+--- a/tensorflow/lite/kernels/internal/max.h
++++ b/tensorflow/lite/kernels/internal/max.h
+@@ -26,7 +26,8 @@ inline float TfLiteMax(const float& x, const float& y) {
+ #else
+ template <class T>
+ inline T TfLiteMax(const T& x, const T& y) {
+-  return std::fmax(x, y);
++  // return std::fmax(x, y);
++  return (x > y) ? x : y;
+ }
+ #endif
+ 

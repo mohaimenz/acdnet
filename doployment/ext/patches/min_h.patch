@@ -1,0 +1,14 @@
+diff --git a/tensorflow/lite/kernels/internal/min.h b/tensorflow/lite/kernels/internal/min.h
+index 62035dc..0cdaf3c 100644
+--- a/tensorflow/lite/kernels/internal/min.h
++++ b/tensorflow/lite/kernels/internal/min.h
+@@ -26,7 +26,8 @@ inline float TfLiteMin(const float& x, const float& y) {
+ #else
+ template <class T>
+ inline T TfLiteMin(const T& x, const T& y) {
+-  return std::fmin(x, y);
++  // return std::fmin(x, y);
++  return (x < y) ? x : y;
+ }
+ #endif
+ 
