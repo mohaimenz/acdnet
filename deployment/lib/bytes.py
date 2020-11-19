@@ -55,15 +55,15 @@ def byte_conversion_tests():
     assert np.array_equal(from_bytes(to_bytes(src, 'int8', endian),'int8', endian), src), "INT8 failed"
     assert np.array_equal(from_bytes(to_bytes(src,'int16', endian),'int16', endian), src), "INT16 failed"
 
-def load_raw(source, dtype, endian = 'little'):
+def load_raw(source, dtype, endian = 'little', dest_path = 'data'):
   '''Loads RAW files from a directory path, as a data set'''
-  raw_files = [f for f in os.listdir(f'data/raw/{source}/{dtype}') if f.endswith('.RAW')]  
+  raw_files = [f for f in os.listdir(dest_path) if f.endswith('.RAW')]  
   x_data = []
   index = 0
   crop = 0
   filename = lambda i,c: f'{i:04}_{c:03}.RAW'
   while filename(index,crop) in raw_files:
-    with open(f'data/{source}/{dtype}/{filename(index,crop)}', 'rb') as fp:
+    with open(os.path.join(dest_path,filename(index,crop)), 'rb') as fp:
       values = from_bytes(fp.read(), dtype, endian)
       x_data.append(np.array(values))
 
@@ -72,37 +72,37 @@ def load_raw(source, dtype, endian = 'little'):
   
   return np.array(x_data)
 
-def save_raw(x_data, source, dtype, endian = 'little'):
+def save_raw(x_data, dtype, endian = 'little', dest_path = 'data'):
   '''Saves a dataset into a RAW file format'''
   
+  filename = lambda i,c: f'{i:04}_{c:03}.RAW'
+  os.makedirs(os.path.dirname(dest_path), exist_ok=True)
   for i in range(len(x_data)):
     crop = math.floor(i/10)
 
-    dest_path = f'data/raw/{source}/{dtype}/{i:04}_{crop:03}.RAW'
-    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-
-    with open(dest_path,'wb') as fp:
+    with open(os.path.join(dest_path,filename(i,crop)), 'wb') as fp:
       byte_data = to_bytes(x_data[i].flatten(), dtype, endian)
       fp.write(byte_data)
 
   print(f'Saved ({len(x_data)}) RAW files: {os.path.dirname(dest_path)}')
 
-def save_scores(y_data, source, dtype, endian='little'):
+def save_scores(y_data, dtype, endian='little', dest_path = 'data'):
+  '''Saves a simple representation of scores, for c++ use'''
+  os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+  
   argmax_scores = np.argmax(y_data, axis = 1)
 
   print(y_data)
   print(y_data.shape)
 
   print(argmax_scores)
-  print(argmax_scores.shape)
+  print(argmax_scores.shape)  
 
-  dest_path = f'data/raw/{source}/{dtype}/scores.bin'
-
-  with open(dest_path,'wb') as fp:
+  with open(os.path.join(dest_path, 'scores.bin'),'wb') as fp:
     byte_data = to_bytes(argmax_scores, dtype, endian)
     fp.write(byte_data)
   
-  print(f'Saved expected scores: {os.path.dirname(dest_path)}')
+  print(f'Saved expected scores: {dest_path}')
 
 def load_data(data_path):
   '''Loads x and y arrays from numpy npz dataset'''

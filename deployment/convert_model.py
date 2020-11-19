@@ -359,8 +359,9 @@ if __name__ == '__main__':
     # Setup required variables
     opt = opts.parse();
     
-    cwd_path = os.path.dirname(os.path.abspath(__file__))
     dtype = 'int8'
+    
+    cwd_path = os.path.dirname(os.path.abspath(__file__))
     result_path = os.path.join(cwd_path, 'results')
     tmp_path = os.path.join(cwd_path, 'tmp')      
 
