@@ -1,0 +1,4 @@
+venv
+data/*.RAW
+data/scores.bin
+tmp/**

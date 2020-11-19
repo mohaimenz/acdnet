@@ -4,8 +4,14 @@ import glob;
 import math;
 import numpy as np;
 
-sys.path.append(os.getcwd());
-sys.path.append(os.path.join(os.getcwd(), 'common'));
+cwd_path = os.path.dirname(os.path.abspath(__file__))
+parent_path = os.path.dirname(cwd_path)
+common_path = os.path.join(parent_path,'common')
+
+sys.path.append(cwd_path);
+sys.path.append(parent_path);
+sys.path.append(common_path);
+
 import common.opts as opts;
 import tf.resources.train_generator as train_generator;
 

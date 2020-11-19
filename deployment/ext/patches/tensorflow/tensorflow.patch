@@ -1,0 +1,927 @@
+diff --git a/.gitignore b/.gitignore
+index 0cfe6fca..bd32fa9f 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -47,3 +47,5 @@ gradleBuild
+ Podfile.lock
+ Pods
+ xcuserdata
++
++*.o
+\ No newline at end of file
+diff --git a/tensorflow/lite/core/api/flatbuffer_conversions.cc b/tensorflow/lite/core/api/flatbuffer_conversions.cc
+index 73d785bf..acdfb69d 100644
+--- a/tensorflow/lite/core/api/flatbuffer_conversions.cc
++++ b/tensorflow/lite/core/api/flatbuffer_conversions.cc
+@@ -402,6 +402,17 @@ TfLiteStatus ParseSvdf(const Operator* op, BuiltinOperator,
+   return kTfLiteOk;
+ }
+ 
++// We have this parse function instead of directly returning kTfLiteOk from the
++// switch-case in ParseOpData because this function is used as part of the
++// selective registration for the OpResolver implementation in micro.
++TfLiteStatus ParseTranspose(const Operator* op, BuiltinOperator op_type,
++                          ErrorReporter* error_reporter,
++                          BuiltinDataAllocator* allocator,
++                          void** builtin_data) {
++  return kTfLiteOk;
++}
++
++
+ TfLiteStatus ParseOpData(const Operator* op, BuiltinOperator op_type,
+                          ErrorReporter* error_reporter,
+                          BuiltinDataAllocator* allocator, void** builtin_data) {
+@@ -466,6 +477,10 @@ TfLiteStatus ParseOpData(const Operator* op, BuiltinOperator op_type,
+       return ParseSvdf(op, op_type, error_reporter, allocator, builtin_data);
+     }
+ 
++    case BuiltinOperator_TRANSPOSE: {
++      return ParseTranspose(op, op_type, error_reporter, allocator, builtin_data);
++    }
++
+     case BuiltinOperator_CAST: {
+       auto params = safe_allocator.Allocate<TfLiteCastParams>();
+       TF_LITE_ENSURE(error_reporter, params != nullptr);
+@@ -1065,7 +1080,6 @@ TfLiteStatus ParseOpData(const Operator* op, BuiltinOperator op_type,
+     case BuiltinOperator_TANH:
+     case BuiltinOperator_TILE:
+     case BuiltinOperator_TOPK_V2:
+-    case BuiltinOperator_TRANSPOSE:
+     case BuiltinOperator_POW:
+     case BuiltinOperator_LOGICAL_OR:
+     case BuiltinOperator_LOGICAL_AND:
+diff --git a/tensorflow/lite/core/api/flatbuffer_conversions.h b/tensorflow/lite/core/api/flatbuffer_conversions.h
+index 78d2aca6..9fefce1c 100644
+--- a/tensorflow/lite/core/api/flatbuffer_conversions.h
++++ b/tensorflow/lite/core/api/flatbuffer_conversions.h
+@@ -111,6 +111,10 @@ TfLiteStatus ParseSvdf(const Operator* op, BuiltinOperator op_type,
+                        ErrorReporter* error_reporter,
+                        BuiltinDataAllocator* allocator, void** builtin_data);
+ 
++TfLiteStatus ParseTranspose(const Operator* op, BuiltinOperator op_type,
++                       ErrorReporter* error_reporter,
++                       BuiltinDataAllocator* allocator, void** builtin_data);
++
+ }  // namespace tflite
+ 
+ #endif  // TENSORFLOW_LITE_CORE_API_FLATBUFFER_CONVERSIONS_H_
+diff --git a/tensorflow/lite/kernels/internal/BUILD b/tensorflow/lite/kernels/internal/BUILD
+index a02a5bf3..f81fcc83 100644
+--- a/tensorflow/lite/kernels/internal/BUILD
++++ b/tensorflow/lite/kernels/internal/BUILD
+@@ -486,6 +486,7 @@ cc_library(
+         "reference/sub.h",
+         "reference/svdf.h",
+         "reference/tanh.h",
++        "reference/transpose.h",
+     ],
+     build_for_embedded = True,
+     copts = tflite_copts(),
+@@ -558,6 +559,7 @@ cc_library(
+         "reference/strided_slice.h",
+         "reference/sub.h",
+         "reference/tanh.h",
++        "reference/transpose.h",
+     ],
+     copts = tflite_copts(),
+     deps = [
+diff --git a/tensorflow/lite/kernels/internal/max.h b/tensorflow/lite/kernels/internal/max.h
+index c1810027..fac3d03d 100644
+--- a/tensorflow/lite/kernels/internal/max.h
++++ b/tensorflow/lite/kernels/internal/max.h
+@@ -26,7 +26,7 @@ inline float TfLiteMax(const float& x, const float& y) {
+ #else
+ template <class T>
+ inline T TfLiteMax(const T& x, const T& y) {
+-  return std::fmax(x, y);
++  return (x > y) ? x : y;
+ }
+ #endif
+ 
+diff --git a/tensorflow/lite/kernels/internal/min.h b/tensorflow/lite/kernels/internal/min.h
+index 62035dcc..c59c75c7 100644
+--- a/tensorflow/lite/kernels/internal/min.h
++++ b/tensorflow/lite/kernels/internal/min.h
+@@ -26,7 +26,7 @@ inline float TfLiteMin(const float& x, const float& y) {
+ #else
+ template <class T>
+ inline T TfLiteMin(const T& x, const T& y) {
+-  return std::fmin(x, y);
++  return (x < y) ? x : y;
+ }
+ #endif
+ 
+diff --git a/tensorflow/lite/kernels/internal/quantization_util.h b/tensorflow/lite/kernels/internal/quantization_util.h
+index 0ee914b0..88f1026a 100644
+--- a/tensorflow/lite/kernels/internal/quantization_util.h
++++ b/tensorflow/lite/kernels/internal/quantization_util.h
+@@ -133,7 +133,7 @@ IntOut SafeCast(FloatIn x) {
+   static_assert(std::numeric_limits<IntOut>::radix == 2, "IntOut is base 2");
+ 
+   // Special case NaN, for which the logic below doesn't work.
+-  if (std::isnan(x)) {
++  if (isnan(x)) {
+     return 0;
+   }
+ 
+@@ -143,7 +143,7 @@ IntOut SafeCast(FloatIn x) {
+   }
+ 
+   // Handle infinities.
+-  if (std::isinf(x)) {
++  if (isinf(x)) {
+     return x < 0 ? std::numeric_limits<IntOut>::min()
+                  : std::numeric_limits<IntOut>::max();
+   }
+diff --git a/tensorflow/lite/kernels/internal/reference/reference_ops.h b/tensorflow/lite/kernels/internal/reference/reference_ops.h
+index 5208b21e..b7a2ace9 100644
+--- a/tensorflow/lite/kernels/internal/reference/reference_ops.h
++++ b/tensorflow/lite/kernels/internal/reference/reference_ops.h
+@@ -60,6 +60,7 @@ limitations under the License.
+ #include "tensorflow/lite/kernels/internal/reference/strided_slice.h"
+ #include "tensorflow/lite/kernels/internal/reference/sub.h"
+ #include "tensorflow/lite/kernels/internal/reference/tanh.h"
++#include "tensorflow/lite/kernels/internal/reference/transpose.h"
+ #include "tensorflow/lite/kernels/internal/strided_slice_logic.h"
+ #include "tensorflow/lite/kernels/internal/tensor.h"
+ #include "tensorflow/lite/kernels/internal/types.h"
+@@ -2013,89 +2014,6 @@ inline void ArgMax(const RuntimeShape& input1_shape, const T1* input1_data,
+   ArgMax(input1_shape, input1_data, input2_data, output_shape, output_data);
+ }
+ 
+-template <typename T, int N>
+-void TransposeImpl(const TransposeParams& params,
+-                   const RuntimeShape& unextended_input_shape,
+-                   const T* input_data,
+-                   const RuntimeShape& unextended_output_shape,
+-                   T* output_data) {
+-  const int unextended_input_size = unextended_input_shape.DimensionsCount();
+-  const int unextended_output_size = unextended_output_shape.DimensionsCount();
+-  TFLITE_DCHECK_LE(unextended_input_size, N);
+-  TFLITE_DCHECK_LE(unextended_output_size, N);
+-  TFLITE_DCHECK_EQ(unextended_output_size, params.perm_count);
+-  const int input_ext_size = N - unextended_input_size;
+-  const int output_ext_size = N - unextended_output_size;
+-  NdArrayDesc<N> input_desc;
+-  NdArrayDesc<N> output_desc;
+-  CopyDimsToDesc(RuntimeShape::ExtendedShape(N, unextended_input_shape),
+-                 &input_desc);
+-  CopyDimsToDesc(RuntimeShape::ExtendedShape(N, unextended_output_shape),
+-                 &output_desc);
+-
+-  // The perm data is extended to match the output, each index incremented by
+-  // the amount of front padding of the input shape.
+-  int extended_perm[N];
+-  for (int i = 0; i < N; ++i) {
+-    extended_perm[i] = i < output_ext_size
+-                           ? i
+-                           : params.perm[i - output_ext_size] + input_ext_size;
+-  }
+-
+-  // Permutes the input shape so we don't need to permute the indexes inside
+-  // the loop. Check to make sure output_dims is matching input_dims.
+-  NdArrayDesc<N> perm_input_desc;
+-  for (int k = 0; k < N; ++k) {
+-    TFLITE_DCHECK_EQ(input_desc.extents[extended_perm[k]],
+-                     output_desc.extents[k]);
+-    perm_input_desc.extents[k] = input_desc.extents[extended_perm[k]];
+-    perm_input_desc.strides[k] = input_desc.strides[extended_perm[k]];
+-  }
+-
+-  // Naive transpose loop (iterate on output index and compute input index).
+-  auto tranpose_func = [&](int indexes[N]) {
+-    output_data[SubscriptToIndex(output_desc, indexes)] =
+-        input_data[SubscriptToIndex(perm_input_desc, indexes)];
+-  };
+-  NDOpsHelper<N>(output_desc, tranpose_func);
+-}
+-
+-template <typename T, int N = 5>
+-void Transpose(const TransposeParams& params,
+-               const RuntimeShape& unextended_input_shape, const T* input_data,
+-               const RuntimeShape& unextended_output_shape, T* output_data) {
+-  // Transpose kernel only does rearranging values not numeric evaluations on
+-  // each cell. It's safe to implement per size of scalar type and this trick
+-  // keeps the total code size in a reasonable range.
+-  switch (sizeof(T)) {
+-    case 1:
+-      TransposeImpl<int8_t, N>(params, unextended_input_shape,
+-                               reinterpret_cast<const int8_t*>(input_data),
+-                               unextended_output_shape,
+-                               reinterpret_cast<int8_t*>(output_data));
+-      break;
+-    case 2:
+-      TransposeImpl<int16_t, N>(params, unextended_input_shape,
+-                                reinterpret_cast<const int16_t*>(input_data),
+-                                unextended_output_shape,
+-                                reinterpret_cast<int16_t*>(output_data));
+-      break;
+-
+-    case 4:
+-      TransposeImpl<int32_t, N>(params, unextended_input_shape,
+-                                reinterpret_cast<const int32_t*>(input_data),
+-                                unextended_output_shape,
+-                                reinterpret_cast<int32_t*>(output_data));
+-      break;
+-    case 8:
+-      TransposeImpl<int64_t, N>(params, unextended_input_shape,
+-                                reinterpret_cast<const int64_t*>(input_data),
+-                                unextended_output_shape,
+-                                reinterpret_cast<int64_t*>(output_data));
+-      break;
+-  }
+-}
+-
+ inline void TransposeConv(
+     const ConvParams& params, const RuntimeShape& input_shape,
+     const float* input_data, const RuntimeShape& filter_shape,
+diff --git a/tensorflow/lite/kernels/internal/reference/transpose.h b/tensorflow/lite/kernels/internal/reference/transpose.h
+new file mode 100644
+index 00000000..1c152194
+--- /dev/null
++++ b/tensorflow/lite/kernels/internal/reference/transpose.h
+@@ -0,0 +1,96 @@
++#ifndef _TRANSPOSE_H
++#define _TRANSPOSE_H
++
++#include "tensorflow/lite/kernels/internal/common.h"
++#include "tensorflow/lite/kernels/internal/types.h"
++
++namespace tflite {
++namespace reference_ops {
++
++template <typename T, int N>
++void TransposeImpl(const TransposeParams& params,
++                   const RuntimeShape& unextended_input_shape,
++                   const T* input_data,
++                   const RuntimeShape& unextended_output_shape,
++                   T* output_data) {
++  const int unextended_input_size = unextended_input_shape.DimensionsCount();
++  const int unextended_output_size = unextended_output_shape.DimensionsCount();
++  TFLITE_DCHECK_LE(unextended_input_size, N);
++  TFLITE_DCHECK_LE(unextended_output_size, N);
++  TFLITE_DCHECK_EQ(unextended_output_size, params.perm_count);
++  const int input_ext_size = N - unextended_input_size;
++  const int output_ext_size = N - unextended_output_size;
++  NdArrayDesc<N> input_desc;
++  NdArrayDesc<N> output_desc;
++  CopyDimsToDesc(RuntimeShape::ExtendedShape(N, unextended_input_shape),
++                 &input_desc);
++  CopyDimsToDesc(RuntimeShape::ExtendedShape(N, unextended_output_shape),
++                 &output_desc);
++
++  // The perm data is extended to match the output, each index incremented by
++  // the amount of front padding of the input shape.
++  int extended_perm[N];
++  for (int i = 0; i < N; ++i) {
++    extended_perm[i] = i < output_ext_size
++                           ? i
++                           : params.perm[i - output_ext_size] + input_ext_size;
++  }
++
++  // Permutes the input shape so we don't need to permute the indexes inside
++  // the loop. Check to make sure output_dims is matching input_dims.
++  NdArrayDesc<N> perm_input_desc;
++  for (int k = 0; k < N; ++k) {
++    TFLITE_DCHECK_EQ(input_desc.extents[extended_perm[k]],
++                     output_desc.extents[k]);
++    perm_input_desc.extents[k] = input_desc.extents[extended_perm[k]];
++    perm_input_desc.strides[k] = input_desc.strides[extended_perm[k]];
++  }
++
++  // Naive transpose loop (iterate on output index and compute input index).
++  auto tranpose_func = [&](int indexes[N]) {
++    output_data[SubscriptToIndex(output_desc, indexes)] =
++        input_data[SubscriptToIndex(perm_input_desc, indexes)];
++  };
++  NDOpsHelper<N>(output_desc, tranpose_func);
++} // TransposeImpl
++
++template <typename T, int N = 5>
++void Transpose(const TransposeParams& params,
++               const RuntimeShape& unextended_input_shape, const T* input_data,
++               const RuntimeShape& unextended_output_shape, T* output_data) {
++  // Transpose kernel only does rearranging values not numeric evaluations on
++  // each cell. It's safe to implement per size of scalar type and this trick
++  // keeps the total code size in a reasonable range.
++  switch (sizeof(T)) {
++    case 1:
++      TransposeImpl<int8_t, N>(params, unextended_input_shape,
++                               reinterpret_cast<const int8_t*>(input_data),
++                               unextended_output_shape,
++                               reinterpret_cast<int8_t*>(output_data));
++      break;
++    case 2:
++      TransposeImpl<int16_t, N>(params, unextended_input_shape,
++                                reinterpret_cast<const int16_t*>(input_data),
++                                unextended_output_shape,
++                                reinterpret_cast<int16_t*>(output_data));
++      break;
++
++    case 4:
++      TransposeImpl<int32_t, N>(params, unextended_input_shape,
++                                reinterpret_cast<const int32_t*>(input_data),
++                                unextended_output_shape,
++                                reinterpret_cast<int32_t*>(output_data));
++      break;
++    case 8:
++      TransposeImpl<int64_t, N>(params, unextended_input_shape,
++                                reinterpret_cast<const int64_t*>(input_data),
++                                unextended_output_shape,
++                                reinterpret_cast<int64_t*>(output_data));
++      break;
++  }
++} // Transpose
++
++} // reference_ops
++} // tflite
++
++#endif
+diff --git a/tensorflow/lite/micro/all_ops_resolver.cc b/tensorflow/lite/micro/all_ops_resolver.cc
+index e728a953..9969b397 100644
+--- a/tensorflow/lite/micro/all_ops_resolver.cc
++++ b/tensorflow/lite/micro/all_ops_resolver.cc
+@@ -77,6 +77,7 @@ AllOpsResolver::AllOpsResolver() {
+   AddSub();
+   AddSvdf();
+   AddTanh();
++  AddTranspose();
+   AddUnpack();
+ 
+   // TODO(b/159644355): Figure out if custom Ops belong in AllOpsResolver.
+diff --git a/tensorflow/lite/micro/kernels/BUILD b/tensorflow/lite/micro/kernels/BUILD
+index c7fa19b8..e2e47c38 100644
+--- a/tensorflow/lite/micro/kernels/BUILD
++++ b/tensorflow/lite/micro/kernels/BUILD
+@@ -53,6 +53,7 @@ cc_library(
+         "strided_slice.cc",
+         "sub.cc",
+         "tanh.cc",
++        "transpose.cc",
+         "unpack.cc",
+     ] + select({
+         "//conditions:default": [
+@@ -73,7 +74,10 @@ cc_library(
+             "xtensa_hifimini_legacy/svdf.cc",
+         ],
+     }),
+-    hdrs = ["micro_ops.h"],
++    hdrs = [
++        "micro_ops.h",
++        "kernel_utils.h",
++    ],
+     # TODO(b/153609488): enable embedded build once we can properly support it.
+     #build_for_embedded = True,
+     copts = micro_copts(),
+@@ -147,9 +151,13 @@ cc_library(
+         "sub.cc",
+         "svdf.cc",
+         "tanh.cc",
++        "transpose.cc",
+         "unpack.cc",
+     ],
+-    hdrs = ["micro_ops.h"],
++    hdrs = [
++        "micro_ops.h"
++        "kernel_utils.h",
++    ],
+     copts = micro_copts(),
+     visibility = [
+         # Needed for micro:portable_optimized_ops_resolver but visibility can not be
+@@ -655,3 +663,14 @@ tflite_micro_cc_test(
+         "//tensorflow/lite/micro/testing:micro_test",
+     ],
+ )
++
++tflite_micro_cc_test(
++    name = "transpose_test",
++    srcs = ["transpose_test.cc"],
++    deps = [
++        "//tensorflow/lite/c:common",
++        "//tensorflow/lite/micro:micro_framework",
++        "//tensorflow/lite/micro:op_resolvers",
++        "//tensorflow/lite/micro/testing:micro_test",
++    ],
++)
+diff --git a/tensorflow/lite/micro/kernels/activation_utils.h b/tensorflow/lite/micro/kernels/activation_utils.h
+index 95ecc26d..f0c76079 100644
+--- a/tensorflow/lite/micro/kernels/activation_utils.h
++++ b/tensorflow/lite/micro/kernels/activation_utils.h
+@@ -28,6 +28,11 @@ namespace tflite {
+ namespace ops {
+ namespace micro {
+ 
++inline float signbit(float a)
++{
++  return a <= -0.0f;
++}
++
+ // Returns the floating point value for a fused activation:
+ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
+   switch (act) {
+@@ -42,7 +47,7 @@ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
+     case kTfLiteActTanh:
+       return std::tanh(a);
+     case kTfLiteActSignBit:
+-      return std::signbit(a);
++      return signbit(a);
+     case kTfLiteActSigmoid:
+       return 1.0f / (1.0f + std::exp(-a));
+   }
+diff --git a/tensorflow/lite/micro/kernels/elementwise.cc b/tensorflow/lite/micro/kernels/elementwise.cc
+index aa97907d..7529482d 100644
+--- a/tensorflow/lite/micro/kernels/elementwise.cc
++++ b/tensorflow/lite/micro/kernels/elementwise.cc
+@@ -75,27 +75,47 @@ inline TfLiteStatus EvalLogical(TfLiteContext* context, TfLiteNode* node,
+ }
+ 
+ TfLiteStatus AbsEval(TfLiteContext* context, TfLiteNode* node) {
+-  return EvalNumeric(context, node, std::abs);
++  return EvalNumeric(context, node, fabsf);
+ }
+ 
+ TfLiteStatus SinEval(TfLiteContext* context, TfLiteNode* node) {
++#ifdef _LIBCPP_VERSION
++  return EvalNumeric(context, node, std::sinf);
++#else
+   return EvalNumeric(context, node, std::sin);
++#endif
+ }
+ 
+ TfLiteStatus CosEval(TfLiteContext* context, TfLiteNode* node) {
++#ifdef _LIBCPP_VERSION
++  return EvalNumeric(context, node, std::cosf);
++#else
+   return EvalNumeric(context, node, std::cos);
++#endif
+ }
+ 
+ TfLiteStatus LogEval(TfLiteContext* context, TfLiteNode* node) {
++#ifdef _LIBCPP_VERSION
++  return EvalNumeric(context, node, std::logf);
++#else
+   return EvalNumeric(context, node, std::log);
++#endif
+ }
+ 
+ TfLiteStatus SqrtEval(TfLiteContext* context, TfLiteNode* node) {
++#ifdef _LIBCPP_VERSION
++  return EvalNumeric(context, node, std::sqrtf);
++#else
+   return EvalNumeric(context, node, std::sqrt);
++#endif
+ }
+ 
+ TfLiteStatus RsqrtEval(TfLiteContext* context, TfLiteNode* node) {
++#ifdef _LIBCPP_VERSION
++  return EvalNumeric(context, node, [](float f) { return 1.f / std::sqrtf(f); });
++#else
+   return EvalNumeric(context, node, [](float f) { return 1.f / std::sqrt(f); });
++#endif
+ }
+ 
+ TfLiteStatus SquareEval(TfLiteContext* context, TfLiteNode* node) {
+diff --git a/tensorflow/lite/micro/kernels/micro_ops.h b/tensorflow/lite/micro/kernels/micro_ops.h
+index 24180aab..7f679760 100644
+--- a/tensorflow/lite/micro/kernels/micro_ops.h
++++ b/tensorflow/lite/micro/kernels/micro_ops.h
+@@ -82,6 +82,7 @@ TfLiteRegistration* Register_SVDF();
+ TfLiteRegistration* Register_UNPACK();
+ TfLiteRegistration* Register_L2_NORMALIZATION();
+ TfLiteRegistration* Register_TANH();
++TfLiteRegistration* Register_TRANSPOSE();
+ 
+ }  // namespace micro
+ }  // namespace ops
+diff --git a/tensorflow/lite/micro/kernels/transpose.cc b/tensorflow/lite/micro/kernels/transpose.cc
+new file mode 100644
+index 00000000..ae4a7c2d
+--- /dev/null
++++ b/tensorflow/lite/micro/kernels/transpose.cc
+@@ -0,0 +1,130 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++
++#include "tensorflow/lite/c/builtin_op_data.h"
++#include "tensorflow/lite/c/common.h"
++#include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
++#include "tensorflow/lite/kernels/kernel_util.h"
++#include "tensorflow/lite/kernels/op_macros.h"
++#include "tensorflow/lite/micro/memory_helpers.h"
++#include "tensorflow/lite/micro/micro_utils.h"
++#include "tensorflow/lite/kernels/internal/reference/transpose.h"
++
++namespace tflite {
++namespace ops {
++namespace micro {
++namespace transpose {
++
++constexpr int kInputTensor = 0;
++constexpr int kPermTensor = 1;
++constexpr int kOutputTensor = 0;
++
++struct TransposeContext {
++    TransposeContext(TfLiteContext* context, TfLiteNode* node) {
++        input = GetInput(context, node, kInputTensor);
++        perm = GetInput(context, node, kPermTensor);
++        output = GetOutput(context, node, kOutputTensor);
++    }
++    const TfLiteTensor* input;
++    const TfLiteTensor* perm;
++    TfLiteTensor* output;
++};
++
++TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) {
++    TF_LITE_ENSURE_EQ(context, NumInputs(node), 2);
++    TF_LITE_ENSURE_EQ(context, NumOutputs(node), 1);
++
++    TransposeContext op_context(context, node);
++
++    // Ensure validity of input tensor.
++    TF_LITE_ENSURE_MSG(context, NumDimensions(op_context.input) <= 5,
++                        "Transpose op only supports 1D-5D input arrays.");
++    TF_LITE_ENSURE_TYPES_EQ(context, op_context.input->type,
++                            op_context.output->type);
++
++    return kTfLiteOk;
++}
++
++TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
++  TransposeContext op_context(context, node);
++
++  // Retrieve the perm permutation array
++  const int32_t* perm_data = GetTensorData<int32_t>(op_context.perm);
++
++  // Determine the number of dimensions in the perm array
++  const int size = op_context.perm->dims->data[0];
++
++  // Prepare an params object to store the perm data whilst implementing
++  // the conversion
++  TransposeParams params;
++  params.perm_count = size;
++  for (int i = 0; i < size; ++i) {
++    params.perm[i] = perm_data[i];
++  }
++
++  // Helper operation to acquire and convert data types
++#define TF_LITE_TRANSPOSE(scalar)                     \
++  reference_ops::Transpose(params, GetTensorShape(op_context.input), \
++                  GetTensorData<scalar>(op_context.input),  \
++                  GetTensorShape(op_context.output),        \
++                  GetTensorData<scalar>(op_context.output))
++
++  // Transpose really operates at the byte level,
++  // and therefore we only really need to get the
++  // size of the scalar datatype in bytes.
++  // Using this we can simplify the calls
++  // to only use a small number of data types
++  switch (op_context.input->type) {
++    case kTfLiteFloat32:
++    case kTfLiteInt32:
++      TF_LITE_TRANSPOSE(int32_t);
++      break;
++    case kTfLiteInt8:
++    case kTfLiteUInt8:
++      TF_LITE_TRANSPOSE(int8_t);
++      break;
++    case kTfLiteInt16:
++      TF_LITE_TRANSPOSE(int16_t);
++      break;
++    default:
++      TF_LITE_KERNEL_LOG(context,
++                         "Type %s is currently not supported by Transpose.",
++                         TfLiteTypeGetName(op_context.input->type));
++      return kTfLiteError;
++  }
++
++#undef TF_LITE_TRANSPOSE
++
++  return kTfLiteOk;
++}
++
++} // namespace transpose
++
++TfLiteRegistration* Register_TRANSPOSE() {
++  static TfLiteRegistration r = {/*init=*/nullptr,
++          /*free=*/nullptr,
++          /*prepare=*/transpose::Prepare,
++          /*invoke=*/transpose::Eval,
++          /*profiling_string=*/nullptr,
++          /*builtin_code=*/0,
++          /*custom_name=*/nullptr,
++          /*version=*/2};
++
++  return &r;
++}
++
++} // namespace micro
++} // namespace ops
++} // namespace tflite
+diff --git a/tensorflow/lite/micro/kernels/transpose_test.cc b/tensorflow/lite/micro/kernels/transpose_test.cc
+new file mode 100644
+index 00000000..ec11eefa
+--- /dev/null
++++ b/tensorflow/lite/micro/kernels/transpose_test.cc
+@@ -0,0 +1,262 @@
++/* Copyright 2017 The TensorFlow Authors. All Rights Reserved.
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
++    http://www.apache.org/licenses/LICENSE-2.0
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
++==============================================================================*/
++#include <stdint.h>
++
++#include <initializer_list>
++#include <vector>
++
++#include "tensorflow/lite/c/common.h"
++#include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
++#include "tensorflow/lite/micro/micro_utils.h"
++#include "tensorflow/lite/micro/test_helpers.h"
++#include "tensorflow/lite/micro/testing/micro_test.h"
++#include "tensorflow/lite/micro/testing/test_utils.h"
++#include "tensorflow/lite/kernels/internal/reference/transpose.h"
++
++namespace tflite {
++namespace testing {
++namespace {
++
++template <typename T>
++inline RuntimeShape GetTensorShape(std::vector<T> data) {
++  return RuntimeShape(data.size(), data.data());
++}
++
++template <typename T>
++void RunTestPermutation(const std::vector<int>& shape,
++                        const std::vector<int>& perms,
++                        std::vector<T>* input_transposed) {
++  // Count elements and allocate output.
++  int count = 1;
++  for (auto factor : shape) count *= factor;
++  input_transposed->resize(count);
++
++  // Create the dummy data
++  std::vector<T> input(count);
++  for (unsigned int i = 0; i < input.size(); i++) {
++    input[i] = i;
++  }
++
++  // Make input and output shapes.
++  const RuntimeShape input_shape = GetTensorShape(shape);
++  RuntimeShape output_shape(perms.size());
++  for (unsigned int i = 0; i < perms.size(); i++) {
++    output_shape.SetDim(i, input_shape.Dims(perms[i]));
++  }
++
++  TransposeParams params;
++  params.perm_count = perms.size();
++  for (unsigned int i = 0; i < perms.size(); ++i) {
++    params.perm[i] = perms[i];
++  }
++
++  tflite::reference_ops::Transpose<T>(params,
++      input_shape, input.data(),
++      output_shape, input_transposed->data());
++}
++
++}  // namespace
++}  // namespace testing
++}  // namespace tflite
++
++#define TF_LITE_MICRO_ARRAY_COMP_EQ(_a,_b)              \
++    {                                                   \
++      TF_LITE_MICRO_EXPECT_EQ(_a.size(),_b.size());     \
++      for (unsigned int _e = 0; _e < _a.size(); _e++) { \
++        TF_LITE_MICRO_EXPECT_EQ(_a[_e], _b[_e]);        \
++      }                                                 \
++    }
++
++#define TF_LITE_MICRO_ARRAY_COMP_NE(_a,_b)              \
++    {                                                   \
++      bool size_eq = _a.size() == _b.size();            \
++      bool cont_eq = true;                              \
++      if (size_eq) {                                    \
++        for (unsigned int _e = 0; _e < _a.size(); _e++) \
++          cont_eq &= _a[_e] == _b[_e];                  \
++      }                                                 \
++      if (size_eq & cont_eq) {                          \
++        TF_LITE_MICRO_FAIL("Arrays are equal");         \
++      }                                                 \
++    }
++
++template <typename T>
++void TransposeTestTestRefOps1D() {
++  // Basic 1D identity.
++  std::vector<T> out;
++  tflite::testing::RunTestPermutation<T>({3}, {0}, &out);
++  std::vector<T> expected({0, 1, 2});
++
++  TF_LITE_MICRO_ARRAY_COMP_EQ(out, expected);
++}
++
++template <typename T>
++void TransposeTestTestRefOps2D() {
++  std::vector<T> out;
++  // Basic 2D.
++  tflite::testing::RunTestPermutation<T>({3, 2}, {1, 0}, &out);
++  TF_LITE_MICRO_ARRAY_COMP_EQ(out, std::vector<T>({0, 2, 4, 1, 3, 5}));
++  // Identity.
++  tflite::testing::RunTestPermutation<T>({3, 2}, {0, 1}, &out);
++  TF_LITE_MICRO_ARRAY_COMP_EQ(out, std::vector<T>({0, 1, 2, 3, 4, 5}));
++}
++
++template <typename T>
++void TransposeTestTestRefOps3D() {
++  std::vector<T> out;
++  {
++    std::vector<T> ref({0, 4, 8,  12, 16, 20, 1, 5, 9,  13, 17, 21,
++                          2, 6, 10, 14, 18, 22, 3, 7, 11, 15, 19, 23});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 4}, /*perms=*/{2, 0, 1}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++
++  // Test 3 dimensional identity transform
++  {
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 4}, /*perms=*/{0, 1, 2}, &out);
++    std::vector<T> ref(out.size());
++    for (unsigned int k = 0; k < ref.size(); k++) ref[k] = k;
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++
++  /**
++   * Additional tests that mimic first case, but with different perm.
++   */
++  {
++    std::vector<T> ref({0, 12, 1, 13, 2, 14, 3, 15, 4,  16, 5,  17,
++                            6, 18, 7, 19, 8, 20, 9, 21, 10, 22, 11, 23});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 4}, /*perms=*/{1, 2, 0}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++
++  {
++    std::vector<T> ref({0,  4,  8,  1,  5,  9,  2,  6,  10, 3,  7,  11,
++                            12, 16, 20, 13, 17, 21, 14, 18, 22, 15, 19, 23});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 4}, /*perms=*/{0, 2, 1}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++
++  {
++    std::vector<T> ref({0,  1,  2,  3,  12, 13, 14, 15, 4,  5,  6,  7,
++                            16, 17, 18, 19, 8,  9,  10, 11, 20, 21, 22, 23});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 4}, /*perms=*/{1, 0, 2}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++
++  {
++    std::vector<T> ref({0, 12, 4, 16, 8,  20, 1, 13, 5, 17, 9,  21,
++                            2, 14, 6, 18, 10, 22, 3, 15, 7, 19, 11, 23});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 4}, /*perms=*/{2, 1, 0}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++}
++
++template <typename T>
++void TransposeTestTestRefOps3D_OneInDimension() {
++  std::vector<T> out;
++  // Shape with 1 as first dim -> transposed.
++  {
++    std::vector<T> ref({0, 3, 1, 4, 2, 5});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{1, 2, 3}, /*perms=*/{2, 0, 1}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++  // Shape with 1 as first dim -> identity.
++  {
++    std::vector<T> ref({0, 1, 2, 3, 4, 5});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{1, 2, 3}, /*perms=*/{1, 2, 0}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++  // Shape with 1 as third dim -> transposed.
++  {
++    std::vector<T> ref({0, 3, 1, 4, 2, 5});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 1}, /*perms=*/{1, 2, 0}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++  // Shape with 1 as third dim -> identity.
++  {
++    std::vector<T> ref({0, 1, 2, 3, 4, 5});
++    tflite::testing::RunTestPermutation<T>(/*shape=*/{2, 3, 1}, /*perms=*/{2, 0, 1}, &out);
++    TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++  }
++}
++
++template <typename T>
++void TransposeTestTestRefOps4D() {
++  std::vector<T> out;
++  // Basic 4d.
++  tflite::testing::RunTestPermutation<T>({2, 3, 4, 5}, {2, 0, 1, 3}, &out);
++  TF_LITE_MICRO_ARRAY_COMP_EQ(
++      out,
++      std::vector<T>(
++          {0,  1,  2,  3,  4,  20, 21, 22, 23, 24, 40,  41,  42,  43,  44,
++           60, 61, 62, 63, 64, 80, 81, 82, 83, 84, 100, 101, 102, 103, 104,
++           5,  6,  7,  8,  9,  25, 26, 27, 28, 29, 45,  46,  47,  48,  49,
++           65, 66, 67, 68, 69, 85, 86, 87, 88, 89, 105, 106, 107, 108, 109,
++           10, 11, 12, 13, 14, 30, 31, 32, 33, 34, 50,  51,  52,  53,  54,
++           70, 71, 72, 73, 74, 90, 91, 92, 93, 94, 110, 111, 112, 113, 114,
++           15, 16, 17, 18, 19, 35, 36, 37, 38, 39, 55,  56,  57,  58,  59,
++           75, 76, 77, 78, 79, 95, 96, 97, 98, 99, 115, 116, 117, 118, 119}));
++  tflite::testing::RunTestPermutation<T>({2, 3, 4, 5}, {0, 1, 2, 3}, &out);
++  // Basic identity.
++  std::vector<T> ref(out.size());
++  for (unsigned int k = 0; k < ref.size(); k++) ref[k] = k;
++  TF_LITE_MICRO_ARRAY_COMP_EQ(out, ref);
++};
++
++TF_LITE_MICRO_TESTS_BEGIN
++
++// TF_LITE_MICRO_TEST(MustFail) {
++//   TF_LITE_MICRO_FAIL("Boom");
++// }
++
++// Safety test to ensure the array tests
++// are passing successfully
++TF_LITE_MICRO_TEST(ARRAY_COMP_ShouldSucceed) {
++  std::vector<float> a({0, 1, 2, 3, 4, 5});
++  std::vector<float> b({0, 1, 2, 3, 4, 5});
++
++  TF_LITE_MICRO_ARRAY_COMP_EQ(a,b);
++}
++
++// Safety test to ensure the array tests
++// are failing as expected
++TF_LITE_MICRO_TEST(ARRAY_COMP_ShouldFail) {
++  std::vector<float> a({0, 1, 2, 3, 4, 6});
++  std::vector<float> b({0, 1, 2, 3, 4, 5});
++  std::vector<float> c({0, 1, 2, 3, 4});
++
++  TF_LITE_MICRO_ARRAY_COMP_NE(a, b);
++  TF_LITE_MICRO_ARRAY_COMP_NE(b, c);
++}
++
++TF_LITE_MICRO_TEST(TestRefOps1D) { TransposeTestTestRefOps1D<float>(); }
++
++TF_LITE_MICRO_TEST(TestRefOps2DFloat) { TransposeTestTestRefOps2D<float>(); }
++TF_LITE_MICRO_TEST(TestRefOps2DInt8) { TransposeTestTestRefOps2D<int8_t>(); }
++TF_LITE_MICRO_TEST(TestRefOps2DUInt8) { TransposeTestTestRefOps2D<uint8_t>(); }
++
++TF_LITE_MICRO_TEST(TestRefOps3DFloat) { TransposeTestTestRefOps3D<float>(); }
++TF_LITE_MICRO_TEST(TestRefOps3DInt8) { TransposeTestTestRefOps3D<int8_t>(); }
++TF_LITE_MICRO_TEST(TestRefOps3DUInt8) { TransposeTestTestRefOps3D<uint8_t>(); }
++
++TF_LITE_MICRO_TEST(TestRefOps3D_OneInDimensionFloat) { TransposeTestTestRefOps3D_OneInDimension<float>(); }
++TF_LITE_MICRO_TEST(TestRefOps3D_OneInDimensionInt8) { TransposeTestTestRefOps3D_OneInDimension<int8_t>(); }
++TF_LITE_MICRO_TEST(TestRefOps3D_OneInDimensionUInt8) { TransposeTestTestRefOps3D_OneInDimension<uint8_t>(); }
++
++TF_LITE_MICRO_TEST(TestRefOps4DFloat) { TransposeTestTestRefOps4D<float>(); }
++TF_LITE_MICRO_TEST(TestRefOps4DInt8) { TransposeTestTestRefOps4D<int8_t>(); }
++TF_LITE_MICRO_TEST(TestRefOps4DInt16) { TransposeTestTestRefOps4D<int16_t>(); }
++
++TF_LITE_MICRO_TESTS_END
++
++#undef TF_LITE_MICRO_ARRAY_COMP_EQ
++#undef TF_LITE_MICRO_ARRAY_COMP_NE
+diff --git a/tensorflow/lite/micro/micro_mutable_op_resolver.h b/tensorflow/lite/micro/micro_mutable_op_resolver.h
+index 1b76f440..12adf8c6 100644
+--- a/tensorflow/lite/micro/micro_mutable_op_resolver.h
++++ b/tensorflow/lite/micro/micro_mutable_op_resolver.h
+@@ -457,6 +457,11 @@ class MicroMutableOpResolver : public MicroOpResolver {
+                       *tflite::ops::micro::Register_TANH(), ParseOpData);
+   }
+ 
++  TfLiteStatus AddTranspose() {
++    return AddBuiltin(BuiltinOperator_TRANSPOSE,
++                      *tflite::ops::micro::Register_TRANSPOSE(), ParseTranspose);
++  }
++
+   TfLiteStatus AddUnpack() {
+     // TODO(b/149408647): Replace ParseOpData with the operator specific parse
+     // function.
+diff --git a/tensorflow/lite/micro/tools/make/Makefile b/tensorflow/lite/micro/tools/make/Makefile
+index a75c59b0..341aa9d2 100644
+--- a/tensorflow/lite/micro/tools/make/Makefile
++++ b/tensorflow/lite/micro/tools/make/Makefile
+@@ -193,6 +193,7 @@ tensorflow/lite/kernels/internal/reference/sub.h \
+ tensorflow/lite/kernels/internal/reference/logistic.h \
+ tensorflow/lite/kernels/internal/reference/strided_slice.h \
+ tensorflow/lite/kernels/internal/reference/tanh.h \
++tensorflow/lite/kernels/internal/reference/transpose.h \
+ tensorflow/lite/kernels/internal/cppmath.h \
+ tensorflow/lite/kernels/internal/max.h \
+ tensorflow/lite/kernels/internal/min.h \

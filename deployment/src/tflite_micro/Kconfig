@@ -1,0 +1,37 @@
+
+config EXAMPLES_TFLITE_MICRO
+	tristate "Tensorflow lite micro Hello World example"
+	default y
+	---help---
+		Enable the tflite_micro app
+
+if EXAMPLES_TFLITE_MICRO
+
+config EXAMPLES_TFLITE_MICRO_PROGNAME
+	string "Program name"
+	default "tflite_micro"
+	---help---
+		This is the name of the program that will be use when the NSH ELF
+		program is installed.
+
+config EXAMPLES_TFLITE_MICRO_PRIORITY
+	int "tflite_micro task priority"
+	default 100
+
+config EXAMPLES_TFLITE_MICRO_STACKSIZE
+	int "tflite_micro stack size"
+	default 32768
+
+config EXAMPLES_TFLITE_MICRO_DEBUGLOG
+	bool "tflite_micro Debug log Enable"
+	default n
+
+config EXAMPLES_TFLITE_MICRO_TENSORFLOW_VERSION
+	string "Version TAG of Tensorflow to download "
+	default "v2.3.1"
+
+config EXAMPLES_TFLITE_MICRO_FEATURE
+	string "Use Feature Provider feature"
+	default 3
+
+endif

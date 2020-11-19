@@ -1,0 +1,17 @@
+autom4te.cache
+aclocal.m4
+compile
+config.log
+config.status
+configure
+depcomp
+install-sh
+Makefile
+Makefile.in
+missing
+
+app/.deps
+app/*.o
+app/.dirstamp
+
+app/model.cpp
