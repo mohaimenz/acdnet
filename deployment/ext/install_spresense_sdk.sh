@@ -5,6 +5,7 @@ CURRENT_DIR=`pwd`
 SPRESENSE_PATH='spresense'
 SPRESENSE_URL='https://github.com/sonydevworld/spresense.git'
 SPRESENSE_BRANCH='v2.0.1'
+SPRESENSE_PATCHES='patches/spresense'
 
 LIBCXX_URL='https://bitbucket.org/acassis/libcxx'
 LIBCXX_PATH='spresense/nuttx'
@@ -26,6 +27,15 @@ else
     git clone --branch=$SPRESENSE_BRANCH --depth=1 --recurse-submodules $SPRESENSE_URL $SPRESENSE_PATH
 fi
 
+echo 'Spresense SDK - Apply patches'
+for f in $SPRESENSE_PATCHES/*.patch
+do 
+    echo $f
+    [ -f "$f" ] || break
+    ( cd $SPRESENSE_PATH && git apply --reject --whitespace=fix $CURRENT_DIR/$f )
+done;
+
+echo 'Libcxx - Apply patches'
 if [ -d ${LIBCXX_PATH}/libs/libxx/libcxx ]
 then
     echo Skipping the install of libcxx, as path already exists
