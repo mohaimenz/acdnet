@@ -9,13 +9,15 @@ SPRESENSE_BRANCH='v2.0.1'
 LIBCXX_URL='https://bitbucket.org/acassis/libcxx'
 LIBCXX_PATH='spresense/nuttx'
 
-if id -nG "$USER" | grep -qw "$GROUP"; then
-    echo $USER belongs to $GROUP
-else
-    echo Adding user to the dialout group
-    sudo usermod -a -G dialout \$USER
-    echo Log out, to join group
-fi
+NUTTX_PATH='spresense/nuttx'
+NUTTX_PATCHES='patches/nuttx'
+
+GROUP=dialout
+
+wget https://raw.githubusercontent.com/sonydevworld/spresense/master/install-tools.sh
+chmod 775 install-tools.sh
+./install-tools.sh
+rm install-tools.sh
 
 if [ -d ${SPRESENSE_PATH} ] 
 then
@@ -24,13 +26,35 @@ else
     git clone --branch=$SPRESENSE_BRANCH --depth=1 --recurse-submodules $SPRESENSE_URL $SPRESENSE_PATH
 fi
 
-if [-d ${LIBCXX_PATH}/libs/libxx/libcxx ]
+if [ -d ${LIBCXX_PATH}/libs/libxx/libcxx ]
 then
     echo Skipping the install of libcxx, as path already exists
 else
-    
+    echo Installing Libcxx
+
     git clone $LIBCXX_URL --depth=1
     (cd libcxx; ./install.sh $CURRENT_DIR/spresense/nuttx)
     cp patches/libcxx/optional.cxx $CURRENT_DIR/spresense/nuttx/libs/libxx/libcxx
     rm -rf libcxx
+fi
+
+echo 'Nuttx - Apply patches'
+for f in $NUTTX_PATCHES/*.patch
+do 
+    echo $f
+    [ -f "$f" ] || break    
+    ( cd $NUTTX_PATH && git apply --reject --whitespace=fix $CURRENT_DIR/$f )
+done;
+
+echo Verifying Spresense install
+
+(source ~/spresenseenv/setup && cd spresense/sdk && make distclean && tools/config.py examples/hello && make)
+
+if id -nG "$USER" | grep -qw "$GROUP"; then
+    echo $USER belongs to $GROUP
+else
+    echo User needs to be added to the dialout group to access device
+    echo Run the following command
+    echo   sudo usermod -a -G dialout \$USER
+    echo Then, logout and login, to join group
 fi

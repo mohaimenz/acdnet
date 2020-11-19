@@ -4,4 +4,4 @@ Make.dep
 .built
 .depend
 
-tensorflow/
+tensorflow

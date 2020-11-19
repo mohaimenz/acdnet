@@ -2,6 +2,8 @@
 
 set -e
 
+CURRENT_DIR=`pwd`
+
 TF_PATH='tensorflow'
 TF_BRANCH='v2.3.1'
 TF_PATCHES='patches/tensorflow'
@@ -22,21 +24,21 @@ else
     (cd $TF_PATH && ./tensorflow/lite/tools/make/download_dependencies.sh)
 
     echo 'TensorFlow - Apply patches'
-    for f in $TF_PATCHES
+    for f in $TF_PATCHES/*.patch
     do 
         echo $f
-        [ -f "$f" ] || break    
-        git apply $f --directory=$TF_PATH;
+        [ -f "$f" ] || break
+        ( cd $TF_PATH && git apply --reject --whitespace=fix $CURRENT_DIR/$f )
     done;
 
     echo 'TensorFlow - Building TensorFlow Lite'
-    (cd $TF_PATH && ./tensorflow/lite/tools/make/build_lib.sh)
+    (source ../venv/bin/activate && cd $TF_PATH && ./tensorflow/lite/tools/make/build_lib.sh)
 
     echo 'TensorFlow - Building TensorFlow Lite Micro for x86_64'
-    (cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile)
+    (source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile)
 
     echo 'TensorFlow - Building TensorFlow Lite Micro for ARM'
-    (cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile TAGS=cmsis-nn third_party_downloads;)
+    (source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile TAGS=cmsis-nn third_party_downloads;)
 
     echo 'Tensorflow - Installation complete'
 fi
