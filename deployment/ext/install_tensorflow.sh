@@ -31,14 +31,13 @@ else
         ( cd $TF_PATH && git apply --reject --whitespace=fix $CURRENT_DIR/$f )
     done;
 
-    echo 'TensorFlow - Building TensorFlow Lite'
-    (source ../venv/bin/activate && cd $TF_PATH && ./tensorflow/lite/tools/make/build_lib.sh)
-
-    echo 'TensorFlow - Building TensorFlow Lite Micro for x86_64'
-    (source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile microlite)
-
-    echo 'TensorFlow - Building TensorFlow Lite Micro for ARM'
-    (source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile TAGS=cmsis-nn microlite;)
-
-    echo 'Tensorflow - Installation complete'
+    
 fi
+
+echo 'TensorFlow - Building TensorFlow Lite'
+(source ../venv/bin/activate && cd $TF_PATH && ./tensorflow/lite/tools/make/build_lib.sh)
+
+echo 'TensorFlow - Building TensorFlow Lite Micro for x86_64'
+(source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile microlite)
+
+echo 'Tensorflow - Installation complete'./
