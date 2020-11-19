@@ -42,7 +42,7 @@ def evaluate_accuracy(y_pred, y_target, ncrops):
   accuracy = (y_pred==y_target).mean()
   return accuracy
 
-def evaluate(log_path, npz_path, ncrops):    
+def evaluate_log(log_path, npz_path, ncrops):    
   '''Loads an activity log file and numpy npz file then evaluates the result'''  
 
   print(f'Evaluating  {log_path}')
@@ -133,4 +133,4 @@ if __name__ == '__main__':
     f'Numpy npz source file not found with path: {npz_path}'
     
   # Evaluate the supplied activity log
-  evaluate(activity_path, npz_path, crop_count)  
+  evaluate_log(activity_path, npz_path, crop_count)  

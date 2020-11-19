@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 
 import os
-from common import *
+import sys
 import datetime
 import shutil
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-import results.evaluate_results
+
+from lib import *
+from results import *
 from  data_loader import Trainer
 
-
-def main(model_path, dtype, results_path, dest_path):
+def main(model_path, dtype, results_path, dest_path, trainer):
   '''This operation converts the models into TFLite and c++ format'''
   
-  assert dtype in common.quant_support.keys(), \
+  assert dtype in quant_support.keys(), \
     f'Unknown quantization target dtype {dtype}'
 
   cwd_path = os.path.dirname(os.path.abspath(__file__))
@@ -22,37 +23,38 @@ def main(model_path, dtype, results_path, dest_path):
 
   results = []
   report_datetime = datetime.datetime.now()  
-  results_path = os.path.join(results_path, f'results_{report_datetime:%y%m%d_%H%M}.npy'
+  results_path = os.path.join(results_path, f'results_{report_datetime:%y%m%d_%H%M}.npy')
 
-  converter = KerasConverter(model_path, dtype, os.path.join(cwd_path)
+  converter = KerasConverter(model_path, dtype, dest_path, trainer)
   converter.load_model()
   input_size, output_size = converter.get_model_size()
 
-  try:
-    # Setup the data required to convert the model
-    data_loader.
-
+  try:    
     # Conversion
     converter.generate_tflite()
 
     # Evaluation
-    print(f'Calculating TF Accuracy : {model_file} with {set_name}')
+    print(f'Calculating TF Accuracy : {model_path}')
     tf_accuracy, tf_pred, tf_data = converter.get_tf_accuracy(crop_size)
       
-    print(f'Calculating TFLite Accuracy : {model_file} {dtype} with {set_name}')
+    print(f'Calculating TFLite Accuracy : {model_path} {dtype}')
     tflite_accuracy, tflite_pred, tflite_data = converter.get_tflite_accuracy(crop_size)
     tflite_arena_size = converter.get_arena_size()
 
-    print(f'Final accuracy : {model_file} with {set_name}')
+    print(f'Final accuracy : {model_path}')
     print(f'TF Accuracy : {tf_accuracy}')            
     print(f'TFLite Accuracy ({dtype}) : {tflite_accuracy}')
     print(f'Arena size (approx): {tflite_arena_size}')
 
+    fold = trainer.opt.split
+    dataset = trainer.opt.dataset
+
     # Summarize
     result = {
-      'model' : model_file,
+      'model' : model_path,
       'dtype' : dtype,
-      'set_name' : set_name,
+      'fold' :  fold,
+      'dataset' : dataset,
       'tf_accuracy' :tf_accuracy,
       'tf_pred' : tf_pred,
       'tf_data' : tf_data,
@@ -71,44 +73,77 @@ def main(model_path, dtype, results_path, dest_path):
     np.save(results_path,results,allow_pickle=True)
 
     # Cleanup
-    dest_tflite_name = os.path.join(cwd_path, f'src/models/{model_file}_{dtype}_{set_name}.tflite')
-    dest_cc_name = os.path.join(cwd_path, f'src/models/{model_file}_{dtype}_{set_name}.cc')
-    os.system(f'xxd -i g_model.tflite > g_model.cc')
+    model_file = os.path.basename(model_path)
+
+    src_tflite_path = os.path.join(dest_path,'g_model.tflite')
+    src_cc_path = os.path.join(dest_path,'g_model.cc')
+
+    # Convert TFLite to CC file, for inclusion in c++ applications
+    os.system(f'xxd -i {src_tflite_path} > {src_cc_path}')
+
+    # Copy tflite file into models folder
+    dest_tflite_name = \
+      f'{model_file}_{dtype}_{dataset}_fold{fold}.tflite'
     
     # Embed model metadata in cc file
-    modify_cc_file(os.path.basename(dest_tflite_name), input_size, tflite_arena_size)
+    modify_cc_file(src_cc_path, dest_tflite_name, input_size, tflite_arena_size)
 
-    # copy to destination file names
-    shutil.copy('g_model.tflite', dest_tflite_name)
-    shutil.copy('g_model.cc', dest_cc_name)
+    dest_tflite_path = \
+        os.path.join(cwd_path, 'src','models',dest_tflite_name)
+    
+    shutil.copy(src_tflite_path, dest_tflite_path)
+
+    # Copy CC file into models folder
+    dest_cc_name = \
+      f'{model_file}_{dtype}_{dataset}_fold{fold}.cc'
+    
+    dest_cc_path = \
+      os.path.join(cwd_path, 'src','models', dest_cc_name)
+
+    shutil.copy(src_cc_path, dest_cc_path)
+
+    # Install into TFLITE Micro
+    tflite_micro_model_path = \
+      os.path.join(cwd_path,'src','tflite_micro', 'model.cc')
+
+    shutil.copy(src_cc_path,  tflite_micro_model_path)
+
+    # Install into TFLITE_x86_64 
+    tflite_micro_model_path = \
+      os.path.join(cwd_path,'src','tflite_x86_64','app', 'model.cpp')
+
+    shutil.copy(src_cc_path,  tflite_micro_model_path)
 
     # Remove temp files
-    os.unlink('g_model.tflite')
-    os.unlink('g_model.cc')
+    os.unlink(src_tflite_path)
+    os.unlink(src_cc_path)
 
   except Exception as ex:
       print(f'Error: {str(ex)}')
   
-  view_results.print_results(results_path)
+  print_results(results_path)
 
-def modify_cc_file(model_name, feature_size, arena_size): 
-  with open('g_model.cc', 'r') as original:
+def modify_cc_file(src_path, model_name, feature_size, arena_size): 
+  with open(src_path, 'r') as original:
     data = original.read()
   
+  gen_model_name = data.splitlines()[0].split(' ')[2][:-2]
+
+  data = data.replace(gen_model_name, 'g_model_tflite')
   data = data.replace('unsigned char', 'const unsigned char')
   data = data.replace('unsigned int', 'const unsigned int')
   data = data.replace('g_model_tflite[] = {','g_model_tflite[] DATA_ALIGN_ATTRIBUTE = {')
   data = f'#include "model.h"\n\n{data}'
   data = f'{data}\nconst char g_model_name[] = "{str(model_name)}";'
   data = f'{data}\nconst unsigned int g_arena_size = {int(arena_size)};'
-  data = f'{data}\nconst unsigned int g_feature_size={int(feature_size)};\n\n'
+  data = f'{data}\nconst unsigned int g_feature_size = {int(feature_size)};\n\n'
 
-  with open('g_model.cc', 'w') as modified:
+  with open(src_path, 'w') as modified:
     modified.write(data)
 
 
 class KerasConverter():
-  def __init__(self, model_file, dtype, dest_path):
+  def __init__(self, model_file, dtype, dest_path, trainer:Trainer):
     '''Initialise the Keras model converter'''
 
     self.model_file = model_file
@@ -117,17 +152,10 @@ class KerasConverter():
     self.tflite_path = f'{dest_path}/g_model.tflite'
     self.cc_path = f'{dest_path}/model.cc'
     self.h_path = f'{dest_path}/model.h'
-    self.data_path = None
-    self.rep_data_path = None
-
-  def set_data_path(self, data_path, rep_data_path):
-    '''Sets the path to the data sets'''
-    '''Required for accuracy evaluation and TFLite conversion'''
-
-    self.data_path = data_path
-    self.rep_data_path = rep_data_path
+    self.trainer = trainer    
 
   def load_model(self):
+    print(f'Loading model: {self.model_file}')
     self.model = keras.models.load_model(self.model_file)
   
   def get_model_size(self):
@@ -166,12 +194,13 @@ class KerasConverter():
 
   def get_input_data(self):
     '''Retrieves the input data set'''
-    x,y = load_data(self.data_path)
+    x,y = self.trainer.testX, self.trainer.testY
     return x, y
 
   def get_cast_input_data(self, dtype = None):
     '''Retrieves the input data set, casting to target dtype'''
-    x, y = load_data(self.data_path)
+    x, y = self.get_input_data()
+
     if dtype is None:
       print('dtype not provided')
       return x,y   
@@ -179,7 +208,8 @@ class KerasConverter():
   
   def get_rep_data(self, dtype = None):
     '''Retrieves the reprepresentative data set'''
-    x, y = load_data(self.rep_data_path)
+    x, y = self.trainer.trainX, self.trainer.trainY
+
     if dtype is None:
       return x,y
     return get_cast(dtype)(x, axis=-2), y
@@ -318,27 +348,10 @@ class KerasConverter():
 
 if __name__ == '__main__':
 
-   help_text = f'''
-Help:  
-
-  This utility can be used to convert a model in `h5` format into
-  a `tflite` and c++ file formats suitable for inclusion in applications
-  to evaluate the model on various architectures.
-
-  fold - [Optional] number in ['1','2','3','4','5'] (Default - 5)
-
-Usage:
-
-  {sys.argv[0]} "path/to/model.h5" fold
-  '''
-
-    assert 2 <= len(sys.argv) <= 3, help_text
+    opt = parse()
     
-    assert os.path.exists(sys.argv[1]), \
-      f'File not found {sys.argv[1]}\n{help_text}'
-
-    assert len(sys.argv) == 3 and sys.argv[2] in ['1','2','3','4','5'], \
-      f'Invalid fold {sys.argv[2]}.\n{help_text}'    
+    assert os.path.exists(opt.model), \
+      f'File not found: {opt.model}\n'
 
     # Setup environment
     run_tests()
@@ -349,8 +362,7 @@ Usage:
     cwd_path = os.path.dirname(os.path.abspath(__file__))
     dtype = 'int8'
     result_path = os.path.join(cwd_path, 'results')
-    tmp_path = os.path.join(cwd_path, 'tmp')
-    fold = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    tmp_path = os.path.join(cwd_path, 'tmp')      
 
     # Get the data sets
     trainer = Trainer(opt);
