@@ -40,4 +40,7 @@ echo 'TensorFlow - Building TensorFlow Lite'
 echo 'TensorFlow - Building TensorFlow Lite Micro for x86_64'
 (source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile microlite)
 
+echo 'TensorFlow - Building CMSIS-NN library dependency'
+(source ../venv/bin/activate && cd $TF_PATH && make -f tensorflow/lite/micro/tools/make/Makefile TAGS=cmsis-nn third_party_downloads)
+
 echo 'Tensorflow - Installation complete'./
