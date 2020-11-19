@@ -22,8 +22,12 @@ else
     (cd $TF_PATH && ./tensorflow/lite/tools/make/download_dependencies.sh)
 
     echo 'TensorFlow - Apply patches'
-    files="$(TF_PATCHES)"; 
-	for ff in $$files; do git apply $$ff; done;
+    for f in $TF_PATCHES
+    do 
+        echo $f
+        [ -f "$f" ] || break    
+        git apply $f --directory=$TF_PATH;
+    done;
 
     echo 'TensorFlow - Building TensorFlow Lite'
     (cd $TF_PATH && ./tensorflow/lite/tools/make/build_lib.sh)
