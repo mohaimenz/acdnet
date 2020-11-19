@@ -1,3 +1,17 @@
+diff --git a/include/nuttx/lib/math.h b/include/nuttx/lib/math.h
+index 9623d3d590..c2ef6566ad 100644
+--- a/include/nuttx/lib/math.h
++++ b/include/nuttx/lib/math.h
+@@ -185,6 +185,9 @@ double      rint(double x);
+ long double rintl(long double x); /* Not implemented */
+ #endif
+ 
++float       fmaxf(float x, float y);
++float       fminf(float x, float y);
++
+ float       fabsf (float x);
+ #ifdef CONFIG_HAVE_DOUBLE
+ double      fabs  (double x);
 diff --git a/libs/libc/math/lib_fmaxminf.c b/libs/libc/math/lib_fmaxminf.c
 new file mode 100644
 index 0000000000..8fe33c7264

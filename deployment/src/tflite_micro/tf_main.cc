@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "nn_manager.h"
-#include "nn_feature_provider_sdcard.h"
+#include "nn_feature_provider_disk.h"
 #include "nn_score.h"
 
 namespace {

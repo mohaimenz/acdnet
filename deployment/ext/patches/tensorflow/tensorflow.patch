@@ -1,3 +1,14 @@
+diff --git a/.gitignore b/.gitignore
+index 0cfe6fca..bd32fa9f 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -47,3 +47,5 @@ gradleBuild
+ Podfile.lock
+ Pods
+ xcuserdata
++
++*.o
+\ No newline at end of file
 diff --git a/tensorflow/lite/core/api/flatbuffer_conversions.cc b/tensorflow/lite/core/api/flatbuffer_conversions.cc
 index 73d785bf..acdfb69d 100644
 --- a/tensorflow/lite/core/api/flatbuffer_conversions.cc
@@ -393,10 +404,22 @@ index c7fa19b8..e2e47c38 100644
 +    ],
 +)
 diff --git a/tensorflow/lite/micro/kernels/activation_utils.h b/tensorflow/lite/micro/kernels/activation_utils.h
-index 95ecc26d..0e3d24d0 100644
+index 95ecc26d..f0c76079 100644
 --- a/tensorflow/lite/micro/kernels/activation_utils.h
 +++ b/tensorflow/lite/micro/kernels/activation_utils.h
-@@ -42,7 +42,7 @@ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
+@@ -28,6 +28,11 @@ namespace tflite {
+ namespace ops {
+ namespace micro {
+ 
++inline float signbit(float a)
++{
++  return a <= -0.0f;
++}
++
+ // Returns the floating point value for a fused activation:
+ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
+   switch (act) {
+@@ -42,7 +47,7 @@ inline float ActivationValFloat(TfLiteFusedActivation act, float a) {
      case kTfLiteActTanh:
        return std::tanh(a);
      case kTfLiteActSignBit:
@@ -406,7 +429,7 @@ index 95ecc26d..0e3d24d0 100644
        return 1.0f / (1.0f + std::exp(-a));
    }
 diff --git a/tensorflow/lite/micro/kernels/elementwise.cc b/tensorflow/lite/micro/kernels/elementwise.cc
-index aa97907d..7b1dc18e 100644
+index aa97907d..7529482d 100644
 --- a/tensorflow/lite/micro/kernels/elementwise.cc
 +++ b/tensorflow/lite/micro/kernels/elementwise.cc
 @@ -75,27 +75,47 @@ inline TfLiteStatus EvalLogical(TfLiteContext* context, TfLiteNode* node,
@@ -454,7 +477,7 @@ index aa97907d..7b1dc18e 100644
 +  return EvalNumeric(context, node, [](float f) { return 1.f / std::sqrtf(f); });
 +#else
    return EvalNumeric(context, node, [](float f) { return 1.f / std::sqrt(f); });
-+#endif  
++#endif
  }
  
  TfLiteStatus SquareEval(TfLiteContext* context, TfLiteNode* node) {
@@ -891,18 +914,9 @@ index 1b76f440..12adf8c6 100644
      // TODO(b/149408647): Replace ParseOpData with the operator specific parse
      // function.
 diff --git a/tensorflow/lite/micro/tools/make/Makefile b/tensorflow/lite/micro/tools/make/Makefile
-index a75c59b0..0d2bf7e3 100644
+index a75c59b0..341aa9d2 100644
 --- a/tensorflow/lite/micro/tools/make/Makefile
 +++ b/tensorflow/lite/micro/tools/make/Makefile
-@@ -78,7 +78,7 @@ MICROLITE_LIBS := -lm
- # TODO(b/159155203): Consider TF_LITE_STATIC_MEMORY to align more with the fact
- # this flag is for an optimized micro runtime.
- CXXFLAGS := -std=c++11 -DTF_LITE_STATIC_MEMORY
--CCFLAGS  := -std=c11   -DTF_LITE_STATIC_MEMORY
-+CCFLAGS  := -std=c11   -DTF_LITE_STATIC_MEMORY 
- ARFLAGS := -r
- 
- # override these in the makefile.inc for specific compiler targets
 @@ -193,6 +193,7 @@ tensorflow/lite/kernels/internal/reference/sub.h \
  tensorflow/lite/kernels/internal/reference/logistic.h \
  tensorflow/lite/kernels/internal/reference/strided_slice.h \

@@ -5,3 +5,4 @@ Make.dep
 .depend
 
 tensorflow
+*.o

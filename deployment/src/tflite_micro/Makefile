@@ -211,38 +211,18 @@ CXXSRCS = $(TF_LM_CXXSRCS) \
 					model.cc \
 					debug_log.cc \
 					nn_manager.cc \
-					nn_score.cc \
-					audio_samples.cc
-
-PATCHES = $(shell find $(CUR_DIR)/patches -name "*.patch")
+					nn_score.cc
 
 MAINSRC = tf_main.cc
 
 clean:: tensorflow_lite_clean
-
-context:: download_tensorflow_transpose
 
 distclean:: tensorflow_lite_clean
 
 tensorflow_lite_clean:
 	@rm -f `find $(TENSORFLOW_DIR) -name "*.o"`
 
-download_tensorflow_transpose:
-	if [ ! -d $(TENSORFLOW_DIR) ]; then	\
-		echo Clone $(TENSORFLOW_GITHUB_URL) tag $(TENSORFLOW_TAG) $(TENSORFLOW_DIR);	\
-		git clone -b $(TENSORFLOW_TAG) --depth 1 $(TENSORFLOW_GITHUB_URL) $(TENSORFLOW_DIR);	\
-		echo Download third party libraries;	\
-		cd $(TENSORFLOW_DIR); make -f tensorflow/lite/micro/tools/make/Makefile TAGS=cmsis-nn third_party_downloads;	\
-		files="$(PATCHES)"; \
-		for ff in $$files; do git apply $$ff; done; \
-	fi
-
 delete_dfiles:
 	@rm -f *.d
-
-delete_tensorflow:
-	if [ -d $(TENSORFLOW_DIR) ]; then \
-		rm -rf $(TENSORFLOW_DIR);	\
-	fi
 
 include $(APPDIR)/Application.mk
