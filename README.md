@@ -16,19 +16,19 @@
 1. Download/clone the repository.
 2. Go to the root of ACDNet directory using the terminal.
 3. To download and process ESC-50 dataset, run: ```python common/prepare_dataset.py```
-4. Prepare the validation data, run: ```python common/val_generator```
+4. Prepare the validation data, run: ```python common/val_generator.py```
 
 *All the required data of ESC-50 for processing `44.1kHz` and `20kHz` are now ready at `datasets/esc50` directory*
 
 #### A.3 Training ACDNet (PyTorch)
-*There are pretrained models provided inside `torch/resources/pretrained_models` directory thta can be used instead of training a new model. The model names are self explanatory. There are 5 pretrained ACDNet models validated on 5-folds (5-fold cross validation), 95% Weight pruned and retrained ACDNet model for hybrid pruning, ACDNet20 pruned and fine-tuned (not trained) and ACDNet-20 trained model*
+*There are pretrained models provided inside `torch/resources/pretrained_models` directory that can be used instead of training a new model. The model names are self explanatory. There are 5 pretrained ACDNet models validated on 5-folds (5-fold cross validation), 95% Weight pruned and retrained ACDNet model for hybrid pruning, ACDNet20 pruned and fine-tuned (not trained) and ACDNet-20 trained model*
 
-However, to conduct the training of a brand new ACDNet, run: ```python torch\trainer.py```
+However, to conduct the training of a brand new ACDNet, run: ```python torch/trainer.py```
 ##### Notes
 * Follow on-screen self-explanatory steps
-* To train a brand new ACDNet, please select `training from scratch` option and keep the model path `empty` in the next step. 
+* To train a brand new ACDNet, please select `training from scratch` option and keep the model path `empty` in the next step.
 * The trained models will be saved at `torch/trained_models directory`
-* The models will have names `YourGivenName_foldNo` on which it was validated. 
+* The models will have names `YourGivenName_foldNo` on which it was validated.
 * For five fold cross validation, there will be 5 models named accordingly
 
 #### A.4 Testing ACDNet (PyTorch)
@@ -36,7 +36,7 @@ However, to conduct the training of a brand new ACDNet, run: ```python torch\tra
 2. Follow the on-screen self explanatory steps
 
 ##### Notes
-* A model should always be tested on the fold on which it was validated to reproduce the result. 
+* A model should always be tested on the fold on which it was validated to reproduce the result.
 * For example, if a model was validated on fold-1, it will reproduce the validation accuracy on that fold. For all other folds (fold 2-5), it will produce approximately 100% prediction accuracy since it was trained on those folds.
 
 #### A.5 Pruning ACDNet (PyTorch)
@@ -44,8 +44,8 @@ However, to conduct the training of a brand new ACDNet, run: ```python torch\tra
 2. Follow the on-screen self explanatory steps
 
 ##### Notes
-* To conduct `hybrid` pruning on ACDNet, please run `weight pruning` on ACDNet first and then apply `hybrid pruning` on the weight pruned model. 
-* The on-screen steps are easy enough to achive this goal.
+* To conduct `hybrid` pruning on ACDNet, please run `weight pruning` on ACDNet first and then apply `hybrid pruning` on the weight pruned model.
+* The on-screen steps are easy enough to achieve this goal.
 * The pruned models will be stored inside `torch/pruned_models` directory
 
 #### A.6 Re-Training ACDNet (PyTorch)
@@ -83,4 +83,3 @@ To rebuild ACDNet-20 from scratch in TF, follow these steps:
 ### C. ACDNet-20 on MCU
 The model will now be converted to TF Lite, quantized to 8-bit and then using TF Lite Micro, we will push the model to MCU for inferencing.
 **Please follow the instructions provided in README.md file inside `deployment` directory**
-
