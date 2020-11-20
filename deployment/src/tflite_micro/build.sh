@@ -1,2 +1,13 @@
 #!/usr/bin/env bash
-(cd ../../ext/spresense/sdk && source ~/spresenseenv/setup && ./tools/config.py examples/tflite_micro && make)
+current_dir=`pwd`
+
+cd ../../ext/spresense/sdk 
+source ~/spresenseenv/setup 
+
+make distclean
+
+./tools/config.py examples/tflite_micro
+make
+
+cd $current_dir
+echo Build task finished
