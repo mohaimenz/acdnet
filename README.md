@@ -56,7 +56,7 @@ To conduct retraining a pruned model, follow these steps:
 4. Provide fold number for the model to be validated.
 
 #### A.7 Quantizing ACDNet (PyTorch)
-1. For 8-bit post training quantization, run: ```python torch\quanization.py```
+1. For 8-bit post training quantization, run: ```python torch/quanization.py```
 2. Provide model path.
 3. Provide the fold on which the model was validated.
 
