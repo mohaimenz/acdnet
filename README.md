@@ -3,7 +3,7 @@
 ## A. Training and Compressing ACDNet
 
 #### A.1 Prerequisits
-1. Create python development environment
+1. Create `python 3.7+` development environment 
 2. Install `torch 1.3` or higher
 2. Install `wavio 0.0.4` python library
 3. Install `wget` for downloading ESC-50 over HTTP
