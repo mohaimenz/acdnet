@@ -10,18 +10,18 @@
 4. Install `FFmpeg` for downsampling and upsampling audio recordings
 
 ##### Note
-* ACDNet is developed and tested in macOS environment. The forthcoming sections assumes that you have the above libraries/softwares installed in your work station.*
+* ACDNet is developed and tested in macOS environment. The forthcoming sections assumes that the above libraries/softwares are now installed.*
 
 #### A.2 Dataset preparation
-1. Download/clone the repository in your computer.
-2. Go to the root of ACDNet directory using your terminal.
+1. Download/clone the repository.
+2. Go to the root of ACDNet directory using the terminal.
 3. To download and process ESC-50 dataset, run: ```python common/prepare_dataset.py```
 4. Prepare the validation data, run: ```python common/val_generator```
 
 *All the required data of ESC-50 for processing `44.1kHz` and `20kHz` are now ready at `datasets/esc50` directory*
 
 #### A.3 Training ACDNet (PyTorch)
-*You may want to use the pretrained models provided inside `torch/resources/pretrained_models` directory for saving time. The model names are self explanatory. There are 5 pretrained ACDNet models validated on 5-folds (5-fold cross validation), 95% Weight pruned and retrained ACDNet model for hybrid pruning, ACDNet20 pruned and fine-tuned (not trained) and ACDNet-20 trained model*
+*There are pretrained models provided inside `torch/resources/pretrained_models` directory thta can be used instead of training a new model. The model names are self explanatory. There are 5 pretrained ACDNet models validated on 5-folds (5-fold cross validation), 95% Weight pruned and retrained ACDNet model for hybrid pruning, ACDNet20 pruned and fine-tuned (not trained) and ACDNet-20 trained model*
 
 However, to conduct the training of a brand new ACDNet, run: ```python torch\trainer.py```
 ##### Notes
@@ -36,16 +36,16 @@ However, to conduct the training of a brand new ACDNet, run: ```python torch\tra
 2. Follow the on-screen self explanatory steps
 
 ##### Notes
-* You should always validate a model on which it was validated to reproduce the result. 
-* For example, if a model was validated on fold-1, it will reproduce the validation accuracy on that fold. For all other folds (fold 2-5), it will produce approximately 100% prediction accuracy as it was trained on those folds.
+* A model should always be tested on the fold on which it was validated to reproduce the result. 
+* For example, if a model was validated on fold-1, it will reproduce the validation accuracy on that fold. For all other folds (fold 2-5), it will produce approximately 100% prediction accuracy since it was trained on those folds.
 
 #### A.5 Pruning ACDNet (PyTorch)
 1. To conduct pruning run: ```python torch/pruning.py```
 2. Follow the on-screen self explanatory steps
 
 ##### Notes
-* To conduct `hybrid` pruning on ACDNet, you need to run `weight pruning` on ACDNet first and then apply `hybrid pruning` on the weight pruned model. 
-* The on-screen steps are easy enough to help you go achive this goal.
+* To conduct `hybrid` pruning on ACDNet, please run `weight pruning` on ACDNet first and then apply `hybrid pruning` on the weight pruned model. 
+* The on-screen steps are easy enough to achive this goal.
 * The pruned models will be stored inside `torch/pruned_models` directory
 
 #### A.6 Re-Training ACDNet (PyTorch)
@@ -68,7 +68,7 @@ For deployment purpose we use Tensorflow and Tensorflow Lite.
 1. Install tensorflow 2.2.0
 
 #### B.2 Training ACDNet-20
-*you may opt to use our pretrained model provided inside tf/resources/pretrained_models directory to save training time*
+*There is a pretrained ACDNet-20 model inside `tf/resources/pretrained_models` directory. This can be used instead.*
 
 To rebuild ACDNet-20 from scratch in TF, follow these steps:
 1. Run: ```python tf/trainer.py```
@@ -76,10 +76,11 @@ To rebuild ACDNet-20 from scratch in TF, follow these steps:
 3. Follow the on-screen steps for finish the process.
 
 ##### Notes
-* For this, you may choose any fold you want the model to be validated as it is going to be trained as a brand new ACDNet-20 model in TF.
+* For this, any fold can be chosen for the model to be validated as it is going to be trained as a brand new ACDNet-20 model in TF.
 * The trained model will be saved inside `tf/trained_models` directory
-* Once you have completed upto this, you are ready to go ahead for the deployment part
+* Once the model training is finished, we are ready to go to the deployment step.
 
 ### C. ACDNet-20 on MCU
+The model will now be converted to TF Lite, quantized to 8-bit and then using TF Lite Micro, we will push the model to MCU for inferencing.
 **Please follow the instructions provided in README.md file inside `deployment` directory**
 
