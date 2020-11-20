@@ -37,5 +37,5 @@ echo 'Spresense SDK - Installing symlinks'
 exit_on_error $? !!
 
 echo 'Flatbuffer - Installing flatbuffer'
-(cd ext && ./install_flatbuffer.sh)
+(cd ext && ./install_flatbuffers.sh)
 exit_on_error $? !!
