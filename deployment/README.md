@@ -210,14 +210,14 @@ Execute the python script to automatically convert all models
 
 *Where*
 - model.h5 is a valid pretrained Keras model
-- [Optional] fold is a number in range [1 - 5]
+- fold is a number in range [1 - 5] on which the model was validated
 
 *Results*
 - TFLite are written automatically to `src/models/{model_file}_{dataset}_fold{fold}.tflite` 
 - CC are written automatically to `src/models/{model_file}_{dtype}_fold{fold}.cc`
 - Accuracy results are written automatically to `results/result_{yymmdd}_{hhmm}.npy`
 
-## 1.5. Data sources  <a name="gendata"></a>
+## 1.5. Data sources
 
 Evaluation data used by the model is supplied in the form of compressed Numpy npz files which contain:
 
@@ -228,6 +228,7 @@ In the context of this repository there are two sorts of npz files
 
 - 'test' data, used to evaluate accuracy
 - 'representation' data used to supply the TFLite conversion with a representative data set
+*All the required data are already there inside the `dataset/esc50` directory. No action required at this moment.*
 
 ### 1.5.1. Generate Raw Source Data
 
@@ -238,11 +239,3 @@ generate_raw_data.py {model_path} --fold {fold_number}
 ```
 
 When copying data to the microSD card, it is recommended to copy the selected dataset of *.RAW files (4000 in total) and scores.bin (1 file) from the generated data path into a `data` folder on the microSD.
-
-## 1.6. Acknowledgements
-
-This project has relied heavily on the following sources:
-
-- TensorFlow Lite [https://www.tensorflow.org/lite/microcontrollers/library]
-- PyTorch [https://pytorch.org/docs/stable/quantization.html]
-- Sony Spresense [https://developer.sony.com/develop/spresense/docs/home_en.html]
