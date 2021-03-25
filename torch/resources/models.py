@@ -14,9 +14,9 @@ torch.backends.cudnn.deterministic = True;
 torch.backends.cudnn.benchmark = False;
 ###########################################
 
-class ACDNet(nn.Module):
+class ACDNetV2(nn.Module):
     def __init__(self, input_length, n_class, sr, ch_conf=None):
-        super(ACDNet, self).__init__();
+        super(ACDNetV2, self).__init__();
         self.input_length = input_length;
         self.ch_config = ch_conf;
 
@@ -27,10 +27,10 @@ class ACDNet(nn.Module):
         n_frames = (sr/1000)*10; #No of frames per 10ms
 
         sfeb_pool_size = int(n_frames/(stride1*stride2));
-        tfeb_pool_size = (2,2);
+        # tfeb_pool_size = (2,2);
         if self.ch_config is None:
             self.ch_config = [channels, channels*8, channels*4, channels*8, channels*8, channels*16, channels*16, channels*32, channels*32, channels*64, channels*64, n_class];
-        avg_pool_kernel_size = (1,4) if self.ch_config[1] < 64 else (2,4);
+        # avg_pool_kernel_size = (1,4) if self.ch_config[1] < 64 else (2,4);
         fcn_no_of_inputs = self.ch_config[-1];
         conv1, bn1 = self.make_layers(1, self.ch_config[0], (1, 9), (1, stride1));
         conv2, bn2 = self.make_layers(self.ch_config[0], self.ch_config[1], (1, 5), (1, stride2));
@@ -54,21 +54,29 @@ class ACDNet(nn.Module):
             nn.MaxPool2d(kernel_size=(1, sfeb_pool_size))
         );
 
-        self.tfeb = nn.Sequential(
-            conv3, bn3, nn.ReLU(), nn.MaxPool2d(kernel_size=tfeb_pool_size),\
-            conv4, bn4, nn.ReLU(),\
-            conv5, bn5, nn.ReLU(), nn.MaxPool2d(kernel_size=tfeb_pool_size),\
-            conv6, bn6, nn.ReLU(),\
-            conv7, bn7, nn.ReLU(), nn.MaxPool2d(kernel_size=tfeb_pool_size),\
-            conv8, bn8, nn.ReLU(),\
-            conv9, bn9, nn.ReLU(), nn.MaxPool2d(kernel_size=tfeb_pool_size),\
-            conv10, bn10, nn.ReLU(),\
-            conv11, bn11, nn.ReLU(), nn.MaxPool2d(kernel_size=tfeb_pool_size),\
-            nn.Dropout(0.2),\
-            conv12, bn12, nn.ReLU(), nn.AvgPool2d(kernel_size = avg_pool_kernel_size),\
-            nn.Flatten(),\
-            fcn
-        )
+        tfeb_modules = [];
+        self.tfeb_width = int(((self.input_length / sr)*1000)/10); # 10ms frames of audio length in seconds
+        tfeb_pool_sizes = self.get_tfeb_pool_sizes(self.ch_config[1], self.tfeb_width);
+        p_index = 0;
+        for i in [3,4,6,8,10]:
+            tfeb_modules.extend([eval('conv{}'.format(i)), eval('bn{}'.format(i)), nn.ReLU()]);
+
+            if i != 3:
+                tfeb_modules.extend([eval('conv{}'.format(i+1)), eval('bn{}'.format(i+1)), nn.ReLU()]);
+
+            h, w = tfeb_pool_sizes[p_index];
+            if h>1 or w>1:
+                tfeb_modules.append(nn.MaxPool2d(kernel_size = (h,w)));
+            p_index += 1;
+
+        tfeb_modules.append(nn.Dropout(0.2));
+        tfeb_modules.extend([conv12, bn12, nn.ReLU()]);
+        h, w = tfeb_pool_sizes[-1];
+        if h>1 or w>1:
+            tfeb_modules.append(nn.AvgPool2d(kernel_size = (h,w)));
+        tfeb_modules.extend([nn.Flatten(), fcn]);
+
+        self.tfeb = nn.Sequential(*tfeb_modules);
 
         self.output = nn.Sequential(
             nn.Softmax(dim=1)
@@ -88,15 +96,42 @@ class ACDNet(nn.Module):
         bn = nn.BatchNorm2d(out_channels);
         return conv, bn;
 
+    def get_tfeb_pool_sizes(self, con2_ch, width):
+        h = self.get_tfeb_pool_size_component(con2_ch);
+        w = self.get_tfeb_pool_size_component(width);
+        # print(w);
+        pool_size = [];
+        for  (h1, w1) in zip(h, w):
+            pool_size.append((h1, w1));
+        return pool_size;
+
+    def get_tfeb_pool_size_component(self, length):
+        # print(length);
+        c = [];
+        index = 1;
+        while index <= 6:
+            if length >= 2:
+                if index == 6:
+                    c.append(length);
+                else:
+                    c.append(2);
+                    length = length // 2;
+            else:
+               c.append(1);
+
+            index += 1;
+
+        return c;
+
 def GetACDNetModel(input_len=66650, nclass=50, sr=44100, channel_config=None):
-    net = ACDNet(input_len, nclass, sr, ch_conf=channel_config);
+    net = ACDNetV2(input_len, nclass, sr, ch_conf=channel_config);
     return net;
 
 #quantization:
 from torch.quantization import QuantStub, DeQuantStub
 class ACDNetQuant(nn.Module):
     def __init__(self, input_length, n_class, sr, ch_conf=None):
-        super(ACDNetQuant, self).__init__();
+        super(ACDNetV2, self).__init__();
         self.input_length = input_length;
         self.ch_config = ch_conf;
 
@@ -107,10 +142,10 @@ class ACDNetQuant(nn.Module):
         n_frames = (sr/1000)*10; #No of frames per 10ms
 
         sfeb_pool_size = int(n_frames/(stride1*stride2));
-        pool_size = (2,2);
+        # tfeb_pool_size = (2,2);
         if self.ch_config is None:
             self.ch_config = [channels, channels*8, channels*4, channels*8, channels*8, channels*16, channels*16, channels*32, channels*32, channels*64, channels*64, n_class];
-        avg_pool_kernel_size = (1,4) if self.ch_config[1] < 64 else (2,4);
+        # avg_pool_kernel_size = (1,4) if self.ch_config[1] < 64 else (2,4);
         fcn_no_of_inputs = self.ch_config[-1];
         conv1, bn1 = self.make_layers(1, self.ch_config[0], (1, 9), (1, stride1));
         conv2, bn2 = self.make_layers(self.ch_config[0], self.ch_config[1], (1, 5), (1, stride2));
@@ -134,25 +169,34 @@ class ACDNetQuant(nn.Module):
             nn.MaxPool2d(kernel_size=(1, sfeb_pool_size))
         );
 
-        self.tfeb = nn.Sequential(
-            conv3, bn3, nn.ReLU(), nn.MaxPool2d(kernel_size=(2,2)),\
-            conv4, bn4, nn.ReLU(),\
-            conv5, bn5, nn.ReLU(), nn.MaxPool2d(kernel_size=(2,2)),\
-            conv6, bn6, nn.ReLU(),\
-            conv7, bn7, nn.ReLU(), nn.MaxPool2d(kernel_size=(2,2)),\
-            conv8, bn8, nn.ReLU(),\
-            conv9, bn9, nn.ReLU(), nn.MaxPool2d(kernel_size=(2,2)),\
-            conv10, bn10, nn.ReLU(),\
-            conv11, bn11, nn.ReLU(), nn.MaxPool2d(kernel_size=(2,2)),\
-            nn.Dropout(0.2),\
-            conv12, bn12, nn.ReLU(), nn.AvgPool2d(kernel_size = avg_pool_kernel_size),\
-            nn.Flatten(),\
-            fcn
-        )
+        tfeb_modules = [];
+        self.tfeb_width = int(((self.input_length / sr)*1000)/10); # 10ms frames of audio length in seconds
+        tfeb_pool_sizes = self.get_tfeb_pool_sizes(self.ch_config[1], self.tfeb_width);
+        p_index = 0;
+        for i in [3,4,6,8,10]:
+            tfeb_modules.extend([eval('conv{}'.format(i)), eval('bn{}'.format(i)), nn.ReLU()]);
+
+            if i != 3:
+                tfeb_modules.extend([eval('conv{}'.format(i+1)), eval('bn{}'.format(i+1)), nn.ReLU()]);
+
+            h, w = tfeb_pool_sizes[p_index];
+            if h>1 or w>1:
+                tfeb_modules.append(nn.MaxPool2d(kernel_size = (h,w)));
+            p_index += 1;
+
+        tfeb_modules.append(nn.Dropout(0.2));
+        tfeb_modules.extend([conv12, bn12, nn.ReLU()]);
+        h, w = tfeb_pool_sizes[-1];
+        if h>1 or w>1:
+            tfeb_modules.append(nn.AvgPool2d(kernel_size = (h,w)));
+        tfeb_modules.extend([nn.Flatten(), fcn]);
+
+        self.tfeb = nn.Sequential(*tfeb_modules);
 
         self.output = nn.Sequential(
             nn.Softmax(dim=1)
         );
+
         self.quant = QuantStub();
         self.dequant = DeQuantStub();
     def forward(self, x):
@@ -172,6 +216,33 @@ class ACDNetQuant(nn.Module):
         nn.init.kaiming_normal_(conv.weight, nonlinearity='relu'); # kaiming with relu is equivalent to he_normal in keras
         bn = nn.BatchNorm2d(out_channels);
         return conv, bn;
+
+    def get_tfeb_pool_sizes(self, con2_ch, width):
+        h = self.get_tfeb_pool_size_component(con2_ch);
+        w = self.get_tfeb_pool_size_component(width);
+        # print(w);
+        pool_size = [];
+        for  (h1, w1) in zip(h, w):
+            pool_size.append((h1, w1));
+        return pool_size;
+
+    def get_tfeb_pool_size_component(self, length):
+        # print(length);
+        c = [];
+        index = 1;
+        while index <= 6:
+            if length >= 2:
+                if index == 6:
+                    c.append(length);
+                else:
+                    c.append(2);
+                    length = length // 2;
+            else:
+               c.append(1);
+
+            index += 1;
+
+        return c;
 
 def GetACDNetQuantModel(input_len=66650, nclass=50, sr=44100, channel_config=None):
     net = ACDNetQuant(input_len, nclass, sr, ch_conf=channel_config);

@@ -9,7 +9,7 @@ def summary(net, inputs, brief=False):
     calc = Calculator(net, inputs);
     calc.calculate();
     if brief:
-        calc.quick_summary();
+        return calc.quick_summary();
     else:
         calc.detailed_summary();
 
@@ -36,8 +36,12 @@ class Calculator(object):
         for name, module in enumerate(self.net.tfeb):
             modules.append(module);
         # modules.append(torch.nn.Flatten());
-        for name, module in enumerate(self.net.output):
-            modules.append(module);
+        try:
+            for name, module in enumerate(self.net.output):
+                modules.append(module);
+        except:
+            print('net.output is not iterable');
+
         for module in modules:
             if module == 'permute':
                 input = self.Permute(input);
@@ -164,6 +168,7 @@ class Calculator(object):
             input_size, self.params, params_size, total_size, self.flops
         );
         print(str);
+        return self.params, params_size, self.flops;
 
     def detailed_summary(self):
         summary_str = "+----------------------------------------------------------------------------+" + "\n";
