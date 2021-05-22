@@ -1,5 +1,5 @@
 # ACDNet
-
+#### Github url: https://github.com/mohaimenz/acdnet
 ## A. Training and Compressing ACDNet
 
 #### A.1 Prerequisits
