@@ -1,4 +1,4 @@
-# ACDNet
+# ACDNet and Deployment Pipeline
 ### Published as:
 Environmental Sound Classiﬁcation on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices (url: https://arxiv.org/abs/2103.03483)
 ### Please cite this work as:
