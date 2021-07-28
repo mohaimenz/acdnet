@@ -1,6 +1,6 @@
 # ACDNet
 ### Published as:
-    Environmental Sound Classiﬁcation on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices (url: https://arxiv.org/abs/2103.03483)
+Environmental Sound Classiﬁcation on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices (url: https://arxiv.org/abs/2103.03483)
 ### Please cite this work as:
     @article{mohaimenuzzaman2021environmental,
       title={Environmental Sound Classification on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices},
