@@ -1,4 +1,14 @@
 # ACDNet
+### Published as: Environmental Sound Classiﬁcation on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices (url: https://arxiv.org/abs/2103.03483)
+### Please cite this work as:
+
+    @article{mohaimenuzzaman2021environmental,
+      title={Environmental Sound Classification on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices},
+      author={Mohaimenuzzaman, Md and Bergmeir, Christoph and West, Ian Thomas and Meyer, Bernd},
+      journal={arXiv preprint arXiv:2103.03483},
+      year={2021}
+    }
+
 #### Github url: https://github.com/mohaimenz/acdnet
 ## A. Training and Compressing ACDNet
 
