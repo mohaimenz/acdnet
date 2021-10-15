@@ -89,8 +89,6 @@ class Trainer:
                 optimizer.step();
 
                 running_loss += loss.item();
-                if batchIdx==4:
-                    break;
 
             tr_acc = (running_acc / n_batches)*100;
             tr_loss = running_loss / n_batches;
