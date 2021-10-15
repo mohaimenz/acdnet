@@ -46,7 +46,7 @@ class Trainer:
             file_paths = glob.glob(net_path);
             if len(file_paths)>0 and os.path.isfile(file_paths[0]):
                 state = torch.load(file_paths[0], map_location=self.opt.device);
-                net = models.GetACDNetModel(self.opt.inputLength, 50, self.opt.sr, channel_config=state['config']).to(self.opt.device);
+                net = models.GetACDNetModel(channel_config=state['config']).to(self.opt.device);
                 if self.opt.retrain:
                     net.load_state_dict(state['weight']);
                 print('Model Loaded');
@@ -89,6 +89,8 @@ class Trainer:
                 optimizer.step();
 
                 running_loss += loss.item();
+                if batchIdx==4:
+                    break;
 
             tr_acc = (running_acc / n_batches)*100;
             tr_loss = running_loss / n_batches;
@@ -110,7 +112,7 @@ class Trainer:
         print("Execution finished in: {}".format(U.to_hms(total_time_taken)));
 
     def load_test_data(self):
-        data = np.load(os.path.join(self.opt.data, self.opt.dataset, 'test_data_44khz/fold{}_test4000.npz'.format(self.opt.split)), allow_pickle=True);
+        data = np.load(os.path.join(self.opt.data, self.opt.dataset, 'test_data_{}khz/fold{}_test4000.npz'.format(self.opt.sr//1000, self.opt.split)), allow_pickle=True);
         self.testX = torch.tensor(np.moveaxis(data['x'], 3, 1)).to(self.opt.device);
         self.testY = torch.tensor(data['y']).to(self.opt.device);
 
