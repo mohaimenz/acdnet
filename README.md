@@ -1,12 +1,14 @@
 # ACDNet and Deployment Pipeline
 ### Published as:
-Environmental Sound Classiﬁcation on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices (url: https://arxiv.org/abs/2103.03483)
+Environmental sound classification on the edge: A pipeline for deep acoustic networks on extremely resource-constrained devices (url: https://arxiv.org/abs/2103.03483)
 ### Please cite this work as:
-    @article{mohaimenuzzaman2021environmental,
-      title={Environmental Sound Classification on the Edge: A Pipeline for Deep Acoustic Networks on Extremely Resource-Constrained Devices},
-      author={Mohaimenuzzaman, Md and Bergmeir, Christoph and West, Ian Thomas and Meyer, Bernd},
-      journal={arXiv preprint arXiv:2103.03483},
-      year={2021}
+    @article{mohaimenuzzaman2022environmental,
+      title={Environmental sound classification on the edge: A pipeline for deep acoustic networks on extremely resource-constrained devices},
+      author={Mohaimenuzzaman, Md and Bergmeir, Christoph and West, Ian and Meyer, Bernd},
+      journal={Pattern Recognition},
+      pages={109025},
+      year={2022},
+      publisher={Elsevier}
     }
 
 #### Github url: https://github.com/mohaimenz/acdnet
