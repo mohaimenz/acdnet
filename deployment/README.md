@@ -70,7 +70,6 @@ This repository has the following git submodule dependencies
 
 | Dependency     | URL                                                   | Branch           | Path                                              | Comment                                              |
 | -------------- | ----------------------------------------------------- | ---------------- | ------------------------------------------------- | ---------------------------------------------------- |
-| TensorFlow     | https://github.com/tensorflow/tensorflow              | v2.3.1_transpose | ext/tensorflow                                    | Modified to support Transpose TFLite micro operation |
 | Flatbuffers    | https://github.com/google/flatbuffers.git             | v1.12.0          | ext/flatbuffers                                   |                                                      |
 | Spresense      | https://github.com/spresense/spresense.git            | v2.0.1           | ext/spresense                                     | Supports TFLite micro                                |
 | NuttX          | https://github.com/spresense/spresense-nuttx.git      |                  | ext/spresense/nuttx                               |                                                      |
@@ -78,12 +77,13 @@ This repository has the following git submodule dependencies
 | nnabla Runtime | https://github.com/sony/nnabla-c-runtime              |                  | ext/spresense/externals/nnablart/nnabla-c-runtime |                                                      |
 
 Additional python requirements, which are installed automatically, include:
-- h5py==2.10.0
-- numpy==1.18.5
-- requests==2.24.0
-- six==1.15.0
-- tensorflow==2.3.1
-- tensorflow-estimator==2.3.0
+- h5py
+- numpy
+- requests
+- six
+- tabulate
+- tensorflow
+- tensorflow-estimator
 
 During the build, further dependencies including source audio may be required.
 
@@ -113,34 +113,9 @@ pip install -r requirements.txt
 
 #### 1.3.2.1. TensorFlow setup
 
-Clone TensorFlow repository
-```bash
-(cd ext && git clone --branch=v2.3.1 --depth=1 --recurse-submodules https://github.com/tensorflow/tensorflow.git)
-```
+Update:
+When installing the latest version of `tensorflow`, the `tflite` library and micro library get automatically installed.
 
-Download the TFLite build dependencies
-
-```bash
-(cd ext/tensorflow && ./tensorflow/lite/tools/make/download_dependencies.sh)
-```
-
-Apply each TensorFlow patch
-
-```bash
-(cd ext/tensorflow && git apply --reject --whitespace=fix ext/patches/tensorflow/{filename}.patch)
-```
-
-Build the tflite library for the local OS
-
-```bash
-(cd ext/tensorflow && ./tensorflow/lite/tools/make/build_lib.sh)
-```
-
-Create the tflite micro library for the local OS
-
-```bash
-(cd ext/tensorflow && make -f tensorflow/lite/micro/tools/make/Makefile microlite)
-```
 
 #### 1.3.2.2. Spresense setup
 
@@ -202,11 +177,10 @@ ln -s tensorflow spresense/examples/tflite_micro/tensorflow
 
 ## 1.4. Conversion of models <a name="convert"></a>
 
-Execute the python script to automatically convert all models
+Execute the python script to automatically convert all models:
 
-```bash
-./convert_model.py {path/to/model.h5} {fold}
-```
+```python <path/to/convert_model.py> <path/to/h5_version_of_the_TF_model> --fold <fold_number>```
+
 
 *Where*
 - model.h5 is a valid pretrained Keras model

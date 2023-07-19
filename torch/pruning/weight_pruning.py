@@ -138,7 +138,7 @@ class PruningTrainer:
 
     def load_test_data(self):
         if(self.testX is None):
-            data = np.load(os.path.join(self.opt.data, self.opt.dataset, 'test_data_44khz/fold{}_test4000.npz'.format(self.opt.split)), allow_pickle=True);
+            data = np.load(os.path.join(self.opt.data, self.opt.dataset, 'test_data_20khz/fold{}_test4000.npz'.format(self.opt.split)), allow_pickle=True);
             self.testX = torch.tensor(np.moveaxis(data['x'], 3, 1)).to(self.device);
             self.testY = torch.tensor(data['y']).to(self.device).to(self.device);
 

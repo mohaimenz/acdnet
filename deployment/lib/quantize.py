@@ -4,7 +4,7 @@ import numpy as np
 def quantize_int8(x, axis):
   '''Quantization into int8_t precision, operating on x along axis'''
 
-  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = np.int)))
+  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = int)))
   epsilon = 0.000000001
   x_scaling_factor = (2 * np.max(np.abs(x), axis) / 255) + epsilon
   x_scaling_factor = x_scaling_factor.reshape(scaling_factor_shape)
@@ -16,7 +16,7 @@ def quantize_int8(x, axis):
 def quantize_int16(x, axis):
   '''Quantization into int16_t precision, operating on x along axis'''
   
-  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = np.int)))
+  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = int)))
   epsilon = 0.00000000001
   x_scaling_factor = (2 * np.max(np.abs(x), axis) / 65535) + epsilon  
   x_scaling_factor = x_scaling_factor.reshape(scaling_factor_shape)  
@@ -28,7 +28,7 @@ def quantize_int16(x, axis):
 def quantize_uint8(x, axis):
   '''Quantization into uint8_t precision, operating on x along axis'''
   
-  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = np.int)))
+  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = int)))
   epsilon = 0.000000001
   x_scaling_factor = (2 * np.max(np.abs(x), axis) / 255) + epsilon  
   x_scaling_factor = x_scaling_factor.reshape(scaling_factor_shape)  
@@ -40,7 +40,7 @@ def quantize_uint8(x, axis):
 def quantize_float16(x, axis):
   '''Quantization into float16 precision, operating on x along axis'''
   
-  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = np.int)))
+  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = int)))
   epsilon = 0.000000001
   x_scaling_factor = (2 * np.max(np.abs(x), axis) / 2.0) + epsilon  
   x_scaling_factor = x_scaling_factor.reshape(scaling_factor_shape)  
@@ -52,7 +52,7 @@ def quantize_float16(x, axis):
 def quantize_float32(x, axis):
   '''Quantization into float32 precision, operating on x along axis'''
   
-  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = np.int)))
+  scaling_factor_shape = tuple(np.append([len(x)],np.ones(x.ndim - 1, dtype = int)))
   epsilon = 0.000000001
   x_scaling_factor = (2 * np.max(np.abs(x), axis) / 2.0) + epsilon  
   x_scaling_factor = x_scaling_factor.reshape(scaling_factor_shape)  
@@ -72,7 +72,7 @@ def get_cast(dtype):
     print('Casting dataset to float16')
     return quantize_float16
 
-  if dtype == tf.int8 or dtype == np.int8 or dtype =='int8':
+  if dtype == tf.int8 or dtype == int8 or dtype =='int8':
     print('Casting dataset to int8')
     return quantize_int8
 
@@ -80,7 +80,7 @@ def get_cast(dtype):
     print('Casting dataset to uint8')
     return quantize_uint8
 
-  if dtype == tf.int16 or dtype == np.int16 or dtype =='int16':
+  if dtype == tf.int16 or dtype == int16 or dtype =='int16':
     print('Casting dataset to int16')
     return quantize_int16
 
@@ -89,7 +89,7 @@ def quantization_tests():
   test_x = np.array([[[[-0.3],[0.1],[0.0],[0.2]]],[[[0.4],[0.1],[0.0],[0.2]]], [[[0.4],[-0.4],[0.4],[-0.4]]], [[[0.0],[0.0],[0.0],[0.0]]]])
 
   quant_int8_actual= quantize_int8(test_x, axis = -2).flatten()
-  quant_int8_expect = np.array([-128, 42, 0, 84, 127, 31, 0, 63, 127, -128, 127, -128, 0, 0, 0, 0], dtype=np.int8)
+  quant_int8_expect = np.array([-128, 42, 0, 84, 127, 31, 0, 63, 127, -128, 127, -128, 0, 0, 0, 0], dtype=int)
   assert np.array_equal(quant_int8_actual,quant_int8_expect), "INT8 quantization failed"
 
   quant_uint8_actual= quantize_uint8(test_x, axis = -2).flatten()

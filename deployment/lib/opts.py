@@ -7,7 +7,7 @@ def parse():
     parent_dir = os.path.join(os.getcwd(),'..','datasets')
 
     # General settings    
-    parser.add_argument('--data', default=f'{parent_dir}',  required=False);
+    parser.add_argument('--data', default='{}/datasets/'.format(os.getcwd()),  required=False);
     parser.add_argument('--dataset', required=False, default='esc50', choices=['esc50', 'frog']);
     parser.add_argument('--fold', required=False, default='5', choices=['1','2','3','4','5']);    
     parser.add_argument('--BC', default=True, action='store_true', help='BC learning');

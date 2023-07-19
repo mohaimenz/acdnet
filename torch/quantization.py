@@ -4,6 +4,7 @@ import glob;
 import math;
 import random;
 import torch;
+import numpy as np
 
 sys.path.append(os.getcwd());
 sys.path.append(os.path.join(os.getcwd(), 'common'));
@@ -19,7 +20,8 @@ class Trainer:
         self.testY = None;
         self.trainX = None;
         self.trainY = None;
-        self.opt.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu");
+        #self.opt.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu");
+        self.opt.device = torch.device("cpu")
         self.trainGen = train_generator.setup(self.opt, self.opt.split);
 
     def load_train_data(self):
@@ -32,7 +34,7 @@ class Trainer:
 
     def load_test_data(self):
         if(self.testX is None):
-            data = np.load(os.path.join(self.opt.data, self.opt.dataset, 'test_data_44khz/fold{}_test4000.npz'.format(self.opt.split)), allow_pickle=True);
+            data = np.load(os.path.join(self.opt.data, self.opt.dataset, 'test_data_20khz/fold{}_test4000.npz'.format(self.opt.split)), allow_pickle=True);
             self.testX = torch.tensor(np.moveaxis(data['x'], 3, 1)).to(self.opt.device);
             self.testY = torch.tensor(data['y']).to(self.opt.device);
 
@@ -140,7 +142,7 @@ class Trainer:
 
     def TestModel(self, quant=False):
         if quant:
-            net = torch.jit.load(self.opt.model_path)
+            net = torch.jit.load(os.getcwd() + '/torch/quantized_models/' + self.opt.model_name + '.pt')
         else:
             net = self.__load_model();
             calc.summary(net, (1,1,self.opt.inputLength));
