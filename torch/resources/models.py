@@ -131,7 +131,7 @@ def GetACDNetModel(input_len=30225, nclass=50, sr=20000, channel_config=None):
 from torch.quantization import QuantStub, DeQuantStub
 class ACDNetQuant(nn.Module):
     def __init__(self, input_length, n_class, sr, ch_conf=None):
-        super(ACDNetV2, self).__init__();
+        super(ACDNetQuant, self).__init__();
         self.input_length = input_length;
         self.ch_config = ch_conf;
 

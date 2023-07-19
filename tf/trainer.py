@@ -28,7 +28,7 @@ class Trainer:
         model.summary();
 
         loss = 'kullback_leibler_divergence';
-        optimizer = keras.optimizers.SGD(lr=self.opt.LR, decay=self.opt.weightDecay, momentum=self.opt.momentum, nesterov=True)
+        optimizer = keras.optimizers.SGD(learning_rate=self.opt.LR, weight_decay=self.opt.weightDecay, momentum=self.opt.momentum, nesterov=True)
 
         model.compile(loss=loss, optimizer=optimizer , metrics=['accuracy']);
 
